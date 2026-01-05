@@ -30,9 +30,17 @@ class DeviceAdapter(
     override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
         val device = devices[position]
         
-        // Mostrar apenas o ID do dispositivo
-        holder.deviceName.text = device.id
-        holder.deviceType.text = "Tipo: ${device.type.name}"
+        // Mostrar nome do dispositivo ou ID se não tiver nome
+        holder.deviceName.text = device.name.ifBlank { device.id }
+        
+        // Mostrar protocol_version no lugar de "OTHER", ou o tipo se não for OTHER
+        val typeText = if (device.type == com.mritsoftware.mritserver.model.TuyaDevice.DeviceType.OTHER) {
+            device.protocolVersion ?: "OTHER"
+        } else {
+            device.type.name
+        }
+        holder.deviceType.text = "Tipo: $typeText"
+        
         holder.deviceStatus.text = if (device.isOnline) "Online" else "Offline"
         holder.deviceStatus.setTextColor(
             if (device.isOnline) 0xFF4ECDC4.toInt() else 0xFFB0B0B0.toInt()

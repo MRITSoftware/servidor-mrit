@@ -32,15 +32,29 @@
                 android:textColor="#333333"
                 android:layout_marginBottom="24dp" />
 
-            <TextView
-                android:id="@+id/deviceName"
-                android:layout_width="wrap_content"
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Nome do Dispositivo"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="#333333"
-                android:layout_marginBottom="16dp" />
+                android:hint="Nome do Dispositivo"
+                android:layout_marginBottom="16dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/deviceNameInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:textSize="18sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+            
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveNameButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Salvar Nome e Sincronizar"
+                android:textSize="16sp"
+                android:layout_marginBottom="16dp"
+                style="@style/Widget.Material3.Button" />
 
             <View
                 android:layout_width="match_parent"
