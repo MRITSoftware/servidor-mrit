@@ -93,32 +93,78 @@ jobs:
     - name: List build outputs
       run: |
         echo "=== Verificando saídas do build ==="
-        find app/build/outputs -type f -name "*.apk" 2>/dev/null || echo "Nenhum APK encontrado em app/build/outputs"
         echo ""
-        echo "=== Estrutura de diretórios ==="
-        ls -la app/build/outputs/ 2>/dev/null || echo "Diretório app/build/outputs não existe"
+        echo "=== Procurando TODOS os APKs gerados ==="
+        find app/build -name "*.apk" -type f 2>/dev/null | head -20 || echo "Nenhum APK encontrado"
         echo ""
-        echo "=== APKs em release ==="
-        ls -lah app/build/outputs/apk/release/ 2>/dev/null || echo "Diretório release não existe"
+        echo "=== Estrutura completa de app/build ==="
+        find app/build -type d 2>/dev/null | head -30 || echo "Diretório app/build não existe"
         echo ""
-        echo "=== APKs em debug ==="
-        ls -lah app/build/outputs/apk/debug/ 2>/dev/null || echo "Diretório debug não existe"
+        echo "=== Estrutura de app/build/outputs ==="
+        ls -laR app/build/outputs/ 2>/dev/null || echo "Diretório app/build/outputs não existe"
         echo ""
-        echo "=== Verificando se APK foi gerado ==="
+        echo "=== Verificando caminho esperado ==="
         if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-          echo "✅ APK encontrado!"
+          echo "✅ APK encontrado no caminho esperado!"
           ls -lh app/build/outputs/apk/release/app-release.apk
         else
           echo "❌ APK não encontrado em app/build/outputs/apk/release/app-release.apk"
-          echo "Procurando em outros locais..."
-          find app/build -name "*.apk" -type f 2>/dev/null || echo "Nenhum APK encontrado"
         fi
+        echo ""
+        echo "=== Verificando outros caminhos possíveis ==="
+        if [ -f app/build/outputs/apk/release/*.apk ]; then
+          echo "✅ APK encontrado (wildcard):"
+          ls -lh app/build/outputs/apk/release/*.apk
+        fi
+        if [ -d app/build/outputs/apk/release ]; then
+          echo "Conteúdo do diretório release:"
+          ls -lah app/build/outputs/apk/release/
+        fi
+        
+    - name: Find APK
+      id: find-apk
+      run: |
+        echo "=== Procurando APK para upload ==="
+        APK_PATH=""
+        
+        # Tentar caminho padrão
+        if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          echo "✅ APK encontrado no caminho padrão: $APK_PATH"
+        else
+          # Procurar qualquer APK em release
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" -type f 2>/dev/null | head -1)
+          if [ -n "$APK_PATH" ]; then
+            echo "✅ APK encontrado: $APK_PATH"
+          else
+            # Procurar em qualquer lugar dentro de app/build
+            APK_PATH=$(find app/build -name "*.apk" -type f 2>/dev/null | head -1)
+            if [ -n "$APK_PATH" ]; then
+              echo "✅ APK encontrado em local alternativo: $APK_PATH"
+            else
+              echo "❌ Nenhum APK encontrado!"
+              echo "Verificando se o build completou..."
+              if [ -d app/build/outputs ]; then
+                echo "Diretório outputs existe, mas sem APK"
+                find app/build -type f -name "*.apk" 2>/dev/null || echo "Nenhum APK em lugar nenhum"
+              else
+                echo "Diretório outputs não existe - build pode ter falhado"
+              fi
+              exit 1
+            fi
+          fi
+        fi
+        
+        echo "APK_PATH=$APK_PATH" >> $GITHUB_OUTPUT
+        echo "Tamanho do APK:"
+        ls -lh "$APK_PATH"
+        echo "Caminho completo: $APK_PATH"
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-release
-        path: app/build/outputs/apk/release/app-release.apk
+        path: ${{ steps.find-apk.outputs.APK_PATH }}
         retention-days: 30
         if-no-files-found: error
         compression-level: 6
