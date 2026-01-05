@@ -114,18 +114,21 @@ if not isinstance(SUPABASE_CONFIG, dict):
 DEFAULT_SUPABASE_URL = "https://kihyhoqbrkwbfudttevo.supabase.co"
 DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtpaHlob3Ficmt3YmZ1ZHR0ZXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTU1NTUwMjcsImV4cCI6MjAzMTEzMTAyN30.XtBTlSiqhsuUIKmhAMEyxofV-dRst7240n912m4O4Us"
 
+# Definir função log antes de usar
+def log(msg: str) -> None:
+    print(msg, flush=True)
+
 # Se não há configuração, usar as credenciais padrão
 if not SUPABASE_CONFIG.get("url") or not SUPABASE_CONFIG.get("anon_key"):
     try:
         update_supabase_config(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY)
-        log("[INFO] Supabase configurado automaticamente com credenciais padrão")
+        log(f"[INFO] Supabase configurado automaticamente: URL={DEFAULT_SUPABASE_URL}")
     except Exception as e:
         log(f"[WARN] Não foi possível configurar Supabase automaticamente: {e}")
 
 print(f"[INFO] Servidor local iniciado para SITE = {SITE_NAME}")
 
-def log(msg: str) -> None:
-    print(msg, flush=True)
+print(f"[INFO] Servidor local iniciado para SITE = {SITE_NAME}")
 
 # =========================
 # DATABASE (SUPABASE)
