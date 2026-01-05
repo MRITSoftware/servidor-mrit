@@ -209,6 +209,79 @@ def get_devices_from_db(tuya_device_ids: List[str]) -> Dict[str, Dict]:
         traceback.print_exc()
         return {}
 
+def create_device_in_db(
+    tuya_device_id: str,
+    site_id: str,
+    name: Optional[str] = None,
+    local_key: Optional[str] = None,
+    lan_ip: Optional[str] = None,
+    protocol_version: Optional[str] = None
+) -> bool:
+    """
+    Cria um novo device na tabela tuya_devices.
+    """
+    if not REQUESTS_AVAILABLE:
+        log("[DB] requests não está disponível")
+        return False
+    
+    if not SUPABASE_CONFIG.get("url") or not SUPABASE_CONFIG.get("anon_key"):
+        log(f"[DB] Configuração do Supabase não encontrada. URL: {SUPABASE_CONFIG.get('url')}, Key: {'presente' if SUPABASE_CONFIG.get('anon_key') else 'ausente'}")
+        return False
+    
+    try:
+        base_url = get_supabase_url()
+        headers = get_supabase_headers()
+        
+        # Construir dict com dados do novo device
+        device_data = {
+            'tuya_device_id': tuya_device_id,
+            'site_id': site_id
+        }
+        
+        if name is not None:
+            device_data['name'] = name
+        
+        if local_key is not None:
+            device_data['local_key'] = local_key
+        
+        if lan_ip is not None:
+            device_data['lan_ip'] = lan_ip
+        
+        if protocol_version is not None:
+            device_data['protocol_version'] = protocol_version
+        
+        # Criar usando Supabase REST API
+        url = f"{base_url}/tuya_devices"
+        
+        log(f"[DB] Tentando criar device {tuya_device_id}")
+        log(f"[DB] URL: {url}")
+        log(f"[DB] Dados: {device_data}")
+        
+        response = requests.post(url, json=device_data, headers=headers, timeout=10)
+        
+        log(f"[DB] Status code: {response.status_code}")
+        log(f"[DB] Response: {response.text[:200]}")  # Primeiros 200 caracteres
+        
+        response.raise_for_status()
+        
+        data = response.json()
+        if data and len(data) > 0:
+            log(f"[DB] Device {tuya_device_id} criado com sucesso: {data}")
+            return True
+        else:
+            log(f"[DB] Resposta vazia ao criar device {tuya_device_id}")
+            return False
+        
+    except requests.exceptions.HTTPError as e:
+        log(f"[DB] Erro HTTP ao criar device {tuya_device_id}: {e}")
+        log(f"[DB] Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
+        traceback.print_exc()
+        return False
+    except Exception as e:
+        log(f"[DB] Erro ao criar device {tuya_device_id}: {e}")
+        traceback.print_exc()
+        return False
+
 def update_device_in_db(
     tuya_device_id: str,
     name: Optional[str] = None,
@@ -631,23 +704,15 @@ def api_sync_devices():
         tuya_ids = list(lan_devices.keys())
         db_devices = get_devices_from_db(tuya_ids)
         
-        if not db_devices:
-            log("[SYNC] Nenhum device da rede encontrado no banco de dados")
-            return jsonify({
-                "ok": True,
-                "message": "Nenhum device da rede encontrado no banco",
-                "updated": 0
-            }), 200
+        log(f"[SYNC] Encontrados {len(db_devices)} devices no banco")
         
-        # 3) Para cada device encontrado na rede E no banco, atualizar
+        # 3) Para cada device encontrado na rede, atualizar ou criar
         updated_count = 0
+        created_count = 0
         updated_devices = []
+        created_devices = []
         
         for tuya_id, lan_info in lan_devices.items():
-            if tuya_id not in db_devices:
-                continue
-            
-            db_info = db_devices[tuya_id]
             lan_ip = lan_info.get("ip")
             protocol_version = lan_info.get("version")
             
@@ -660,53 +725,84 @@ def api_sync_devices():
             name_from_body = device_extra_data.get("name")
             local_key_from_body = device_extra_data.get("local_key")
             
-            # Preparar dados para atualização
-            update_needed = False
-            update_data = {}
-            
-            # Sempre atualizar lan_ip e protocol_version se disponíveis do scan
-            if lan_ip and lan_ip != db_info.get('lan_ip'):
-                update_data['lan_ip'] = lan_ip
-                update_needed = True
-            
-            if protocol_version and protocol_version != db_info.get('protocol_version'):
-                update_data['protocol_version'] = protocol_version
-                update_needed = True
-            
-            # Atualizar name se fornecido no body
-            if name_from_body and name_from_body != db_info.get('name'):
-                update_data['name'] = name_from_body
-                update_needed = True
-            
-            # Atualizar local_key se fornecido no body
-            if local_key_from_body and local_key_from_body != db_info.get('local_key'):
-                update_data['local_key'] = local_key_from_body
-                update_needed = True
-            
-            if update_needed:
-                success = update_device_in_db(
+            # Verificar se device existe no banco
+            if tuya_id in db_devices:
+                # Device existe: ATUALIZAR
+                db_info = db_devices[tuya_id]
+                
+                # Preparar dados para atualização
+                update_needed = False
+                update_data = {}
+                
+                # Sempre atualizar lan_ip e protocol_version se disponíveis do scan
+                if lan_ip and lan_ip != db_info.get('lan_ip'):
+                    update_data['lan_ip'] = lan_ip
+                    update_needed = True
+                
+                if protocol_version and protocol_version != db_info.get('protocol_version'):
+                    update_data['protocol_version'] = protocol_version
+                    update_needed = True
+                
+                # Atualizar name se fornecido no body
+                if name_from_body and name_from_body != db_info.get('name'):
+                    update_data['name'] = name_from_body
+                    update_needed = True
+                
+                # Atualizar local_key se fornecido no body
+                if local_key_from_body and local_key_from_body != db_info.get('local_key'):
+                    update_data['local_key'] = local_key_from_body
+                    update_needed = True
+                
+                if update_needed:
+                    success = update_device_in_db(
+                        tuya_device_id=tuya_id,
+                        name=update_data.get('name'),
+                        local_key=update_data.get('local_key'),
+                        lan_ip=update_data.get('lan_ip'),
+                        protocol_version=update_data.get('protocol_version')
+                    )
+                    
+                    if success:
+                        updated_count += 1
+                        updated_devices.append({
+                            "tuya_device_id": tuya_id,
+                            "action": "updated",
+                            "updated_fields": list(update_data.keys())
+                        })
+                        log(f"[SYNC] Device {tuya_id} atualizado: {list(update_data.keys())}")
+                else:
+                    log(f"[SYNC] Device {tuya_id} já está atualizado")
+            else:
+                # Device não existe: CRIAR
+                log(f"[SYNC] Device {tuya_id} não encontrado no banco, criando novo registro...")
+                
+                success = create_device_in_db(
                     tuya_device_id=tuya_id,
-                    name=update_data.get('name'),
-                    local_key=update_data.get('local_key'),
-                    lan_ip=update_data.get('lan_ip'),
-                    protocol_version=update_data.get('protocol_version')
+                    site_id=SITE_NAME,
+                    name=name_from_body,
+                    local_key=local_key_from_body,
+                    lan_ip=lan_ip,
+                    protocol_version=protocol_version
                 )
                 
                 if success:
-                    updated_count += 1
-                    updated_devices.append({
+                    created_count += 1
+                    created_devices.append({
                         "tuya_device_id": tuya_id,
-                        "updated_fields": list(update_data.keys())
+                        "action": "created"
                     })
-                    log(f"[SYNC] Device {tuya_id} atualizado: {list(update_data.keys())}")
+                    log(f"[SYNC] Device {tuya_id} criado com sucesso")
         
-        log(f"[SYNC] Sincronização concluída: {updated_count} devices atualizados")
+        total_processed = updated_count + created_count
+        log(f"[SYNC] Sincronização concluída: {updated_count} atualizados, {created_count} criados")
         
         return jsonify({
             "ok": True,
-            "message": f"{updated_count} device(s) atualizado(s)",
+            "message": f"{updated_count} device(s) atualizado(s), {created_count} device(s) criado(s)",
             "updated": updated_count,
-            "devices": updated_devices
+            "created": created_count,
+            "total": total_processed,
+            "devices": updated_devices + created_devices
         }), 200
         
     except Exception as e:
