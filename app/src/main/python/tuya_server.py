@@ -9,20 +9,15 @@ from typing import Optional, Dict, Any, List
 from flask import Flask, request, jsonify
 import tinytuya
 
-# Tentar importar supabase, mas não falhar se não estiver disponível
+# Usar requests para chamadas HTTP diretas ao Supabase
+# Isso evita dependências problemáticas como pydantic-core
 try:
-    from supabase import create_client
-    try:
-        from supabase import Client
-    except ImportError:
-        # Algumas versões não exportam Client diretamente
-        Client = Any
-    SUPABASE_AVAILABLE = True
+    import requests
+    REQUESTS_AVAILABLE = True
 except ImportError:
-    SUPABASE_AVAILABLE = False
-    Client = None
+    REQUESTS_AVAILABLE = False
     # log será definido depois, então apenas print aqui
-    print("[WARN] supabase não disponível - funcionalidades de banco desabilitadas")
+    print("[WARN] requests não disponível - funcionalidades de banco desabilitadas")
 
 # =========================
 # CONFIG & AUTO-SETUP
@@ -136,10 +131,10 @@ def log(msg: str) -> None:
 # DATABASE (SUPABASE)
 # =========================
 
-def get_supabase_client():
-    """Cria cliente Supabase."""
-    if not SUPABASE_AVAILABLE:
-        raise RuntimeError("supabase não está disponível")
+def get_supabase_headers():
+    """Retorna headers para requisições ao Supabase."""
+    if not REQUESTS_AVAILABLE:
+        raise RuntimeError("requests não está disponível")
     
     url = SUPABASE_CONFIG.get("url")
     anon_key = SUPABASE_CONFIG.get("anon_key")
@@ -147,33 +142,50 @@ def get_supabase_client():
     if not url or not anon_key:
         raise RuntimeError("Configuração do Supabase não encontrada (url ou anon_key faltando)")
     
-    try:
-        supabase = create_client(url, anon_key)
-        return supabase
-    except Exception as e:
-        log(f"[DB] Erro ao criar cliente Supabase: {e}")
-        raise
+    return {
+        "apikey": anon_key,
+        "Authorization": f"Bearer {anon_key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+    }
+
+def get_supabase_url():
+    """Retorna a URL base do Supabase."""
+    url = SUPABASE_CONFIG.get("url")
+    if not url:
+        raise RuntimeError("URL do Supabase não configurada")
+    # Garantir que a URL termina com /rest/v1
+    if not url.endswith("/"):
+        url += "/"
+    return f"{url}rest/v1"
 
 def get_devices_from_db(tuya_device_ids: List[str]) -> Dict[str, Dict]:
     """
     Busca devices da tabela tuya_devices pelos tuya_device_id.
     Retorna um dict onde a chave é tuya_device_id e o valor é um dict com os dados.
     """
-    if not SUPABASE_AVAILABLE or not SUPABASE_CONFIG.get("url"):
+    if not REQUESTS_AVAILABLE or not SUPABASE_CONFIG.get("url"):
         return {}
     
     if not tuya_device_ids:
         return {}
     
     try:
-        supabase = get_supabase_client()
+        base_url = get_supabase_url()
+        headers = get_supabase_headers()
         
-        # Buscar devices usando Supabase
-        # Usar .in_() para buscar múltiplos tuya_device_id
-        response = supabase.table("tuya_devices").select("*").in_("tuya_device_id", tuya_device_ids).execute()
+        # Construir query para buscar múltiplos tuya_device_id
+        # Supabase PostgREST usa formato: tuya_device_id=in.(id1,id2,id3)
+        # URL encode os IDs para evitar problemas com caracteres especiais
+        ids_param = ",".join(tuya_device_ids)
+        url = f"{base_url}/tuya_devices?tuya_device_id=in.({ids_param})&select=*"
         
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
         result = {}
-        for row in response.data:
+        for row in data:
             tuya_id = row.get('tuya_device_id')
             if tuya_id:
                 result[tuya_id] = {
@@ -205,11 +217,12 @@ def update_device_in_db(
     Atualiza um device na tabela tuya_devices.
     Apenas atualiza os campos que foram fornecidos (não None).
     """
-    if not SUPABASE_AVAILABLE or not SUPABASE_CONFIG.get("url"):
+    if not REQUESTS_AVAILABLE or not SUPABASE_CONFIG.get("url"):
         return False
     
     try:
-        supabase = get_supabase_client()
+        base_url = get_supabase_url()
+        headers = get_supabase_headers()
         
         # Construir dict com apenas os campos que foram fornecidos
         update_data = {}
@@ -227,15 +240,17 @@ def update_device_in_db(
             update_data['protocol_version'] = protocol_version
         
         # updated_at será atualizado automaticamente pelo banco (default now())
-        # Mas podemos forçar também se necessário
         
         if not update_data:
             return False
         
-        # Atualizar usando Supabase
-        response = supabase.table("tuya_devices").update(update_data).eq("tuya_device_id", tuya_device_id).execute()
+        # Atualizar usando Supabase REST API
+        url = f"{base_url}/tuya_devices?tuya_device_id=eq.{tuya_device_id}"
+        response = requests.patch(url, json=update_data, headers=headers, timeout=10)
+        response.raise_for_status()
         
-        if response.data and len(response.data) > 0:
+        data = response.json()
+        if data and len(data) > 0:
             log(f"[DB] Device {tuya_device_id} atualizado com sucesso")
             return True
         else:
