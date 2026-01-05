@@ -29,30 +29,7 @@ class DeviceDetailsActivity : AppCompatActivity() {
     
     private var device: TuyaDevice? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
-    
-    private val syncLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val data = result.data
-            val syncSuccess = data?.getBooleanExtra("sync_success", false) ?: false
-            
-            if (syncSuccess) {
-                // Atualizar informações do dispositivo
-                device?.let { dev ->
-                    data.getStringExtra("device_name")?.let { dev.name = it }
-                    data.getStringExtra("lan_ip")?.let { dev.lanIp = it }
-                    data.getStringExtra("protocol_version")?.let { dev.protocolVersion = it }
-                    
-                    // Atualizar UI
-                    loadDeviceInfo()
-                    
-                    Toast.makeText(this, "Dispositivo sincronizado com sucesso!", Toast.LENGTH_LONG).show()
-                }
-            } else {
-                val errorMessage = data?.getStringExtra("error_message") ?: "Erro desconhecido"
-                Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
-            }
-        }
-    }
+    private lateinit var syncLauncher: androidx.activity.result.ActivityResultLauncher<Intent>
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +41,31 @@ class DeviceDetailsActivity : AppCompatActivity() {
             Toast.makeText(this, "Dispositivo não encontrado", Toast.LENGTH_SHORT).show()
             finish()
             return
+        }
+        
+        // Inicializar syncLauncher
+        syncLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val data = result.data
+                val syncSuccess = data?.getBooleanExtra("sync_success", false) ?: false
+                
+                if (syncSuccess) {
+                    // Atualizar informações do dispositivo
+                    device?.let { dev ->
+                        data.getStringExtra("device_name")?.let { dev.name = it }
+                        data.getStringExtra("lan_ip")?.let { dev.lanIp = it }
+                        data.getStringExtra("protocol_version")?.let { dev.protocolVersion = it }
+                        
+                        // Atualizar UI
+                        loadDeviceInfo()
+                        
+                        Toast.makeText(this, "Dispositivo sincronizado com sucesso!", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    val errorMessage = data?.getStringExtra("error_message") ?: "Erro desconhecido"
+                    Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                }
+            }
         }
         
         setupToolbar()
