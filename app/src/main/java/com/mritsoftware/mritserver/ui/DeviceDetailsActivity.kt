@@ -52,9 +52,9 @@ class DeviceDetailsActivity : AppCompatActivity() {
                 if (syncSuccess) {
                     // Atualizar informações do dispositivo
                     device?.let { dev ->
-                        data.getStringExtra("device_name")?.let { dev.name = it }
-                        data.getStringExtra("lan_ip")?.let { dev.lanIp = it }
-                        data.getStringExtra("protocol_version")?.let { dev.protocolVersion = it }
+                        data?.getStringExtra("device_name")?.let { dev.name = it }
+                        data?.getStringExtra("lan_ip")?.let { dev.lanIp = it }
+                        data?.getStringExtra("protocol_version")?.let { dev.protocolVersion = it }
                         
                         // Atualizar UI
                         loadDeviceInfo()
