@@ -155,9 +155,9 @@ def get_supabase_url():
     if not url:
         raise RuntimeError("URL do Supabase não configurada")
     # Garantir que a URL termina com /rest/v1
-    if not url.endswith("/"):
-        url += "/"
-    return f"{url}rest/v1"
+    # Remover barra final se existir
+    url = url.rstrip("/")
+    return f"{url}/rest/v1"
 
 def get_devices_from_db(tuya_device_ids: List[str]) -> Dict[str, Dict]:
     """
@@ -217,7 +217,12 @@ def update_device_in_db(
     Atualiza um device na tabela tuya_devices.
     Apenas atualiza os campos que foram fornecidos (não None).
     """
-    if not REQUESTS_AVAILABLE or not SUPABASE_CONFIG.get("url"):
+    if not REQUESTS_AVAILABLE:
+        log("[DB] requests não está disponível")
+        return False
+    
+    if not SUPABASE_CONFIG.get("url") or not SUPABASE_CONFIG.get("anon_key"):
+        log(f"[DB] Configuração do Supabase não encontrada. URL: {SUPABASE_CONFIG.get('url')}, Key: {'presente' if SUPABASE_CONFIG.get('anon_key') else 'ausente'}")
         return False
     
     try:
@@ -242,23 +247,39 @@ def update_device_in_db(
         # updated_at será atualizado automaticamente pelo banco (default now())
         
         if not update_data:
+            log(f"[DB] Nenhum dado para atualizar para device {tuya_device_id}")
             return False
         
         # Atualizar usando Supabase REST API
+        # Supabase usa formato: /rest/v1/tuya_devices?tuya_device_id=eq.{id}
         url = f"{base_url}/tuya_devices?tuya_device_id=eq.{tuya_device_id}"
+        
+        log(f"[DB] Tentando atualizar device {tuya_device_id}")
+        log(f"[DB] URL: {url}")
+        log(f"[DB] Dados: {update_data}")
+        
         response = requests.patch(url, json=update_data, headers=headers, timeout=10)
+        
+        log(f"[DB] Status code: {response.status_code}")
+        log(f"[DB] Response: {response.text[:200]}")  # Primeiros 200 caracteres
+        
         response.raise_for_status()
         
         data = response.json()
         if data and len(data) > 0:
-            log(f"[DB] Device {tuya_device_id} atualizado com sucesso")
+            log(f"[DB] Device {tuya_device_id} atualizado com sucesso: {data}")
             return True
         else:
             log(f"[DB] Nenhum device encontrado com tuya_device_id = {tuya_device_id}")
             return False
         
+    except requests.exceptions.HTTPError as e:
+        log(f"[DB] Erro HTTP ao atualizar device {tuya_device_id}: {e}")
+        log(f"[DB] Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
+        traceback.print_exc()
+        return False
     except Exception as e:
-        log(f"[DB] Erro ao atualizar device: {e}")
+        log(f"[DB] Erro ao atualizar device {tuya_device_id}: {e}")
         traceback.print_exc()
         return False
 
