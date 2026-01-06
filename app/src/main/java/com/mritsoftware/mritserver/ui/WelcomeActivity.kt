@@ -118,6 +118,7 @@ class WelcomeActivity : AppCompatActivity() {
         findViewById<View>(R.id.searchingCard).visibility = View.VISIBLE
         findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
         findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
+        findViewById<View>(R.id.connectedCard).visibility = View.GONE
         
         searchingText.text = "Buscando dispositivos..."
         searchingSubtext.text = "Escaneando a rede local"
@@ -194,12 +195,21 @@ class WelcomeActivity : AppCompatActivity() {
         findViewById<View>(R.id.searchingCard).visibility = View.GONE
         findViewById<View>(R.id.devicesFoundCard).visibility = View.VISIBLE
         findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
+        findViewById<View>(R.id.connectedCard).visibility = View.GONE
     }
     
     private fun showNoDevices() {
         findViewById<View>(R.id.searchingCard).visibility = View.GONE
         findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
         findViewById<View>(R.id.noDevicesCard).visibility = View.VISIBLE
+        findViewById<View>(R.id.connectedCard).visibility = View.GONE
+    }
+    
+    private fun showConnected() {
+        findViewById<View>(R.id.searchingCard).visibility = View.GONE
+        findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
+        findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
+        findViewById<View>(R.id.connectedCard).visibility = View.VISIBLE
     }
     
     private fun syncWithSupabase() {
@@ -233,8 +243,8 @@ class WelcomeActivity : AppCompatActivity() {
                         .putString("site_name", "ANDROID_DEVICE") // Nome padrão
                         .apply()
                     
-                    // Ir para tela de sucesso
-                    startSuccessActivity()
+                    // Mostrar tela de conectado
+                    showConnected()
                 } else {
                     Toast.makeText(this@WelcomeActivity, "Erro ao sincronizar com o servidor", Toast.LENGTH_LONG).show()
                     startServerButton.isEnabled = true
@@ -288,12 +298,6 @@ class WelcomeActivity : AppCompatActivity() {
     private fun isSiteConfigured(): Boolean {
         return sharedPreferences.getBoolean("welcome_completed", false) &&
                sharedPreferences.getString("site_name", null) != null
-    }
-    
-    private fun startSuccessActivity() {
-        val intent = Intent(this, SuccessActivity::class.java)
-        startActivity(intent)
-        finish()
     }
     
     private fun startMainActivity() {
