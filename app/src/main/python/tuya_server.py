@@ -19,6 +19,14 @@ except ImportError:
     # log será definido depois, então apenas print aqui
     print("[WARN] requests não disponível - funcionalidades de banco desabilitadas")
 
+# Tuya Connector para buscar local_key da API Tuya
+try:
+    from tuya_connector import TuyaOpenAPI
+    TUYA_CONNECTOR_AVAILABLE = True
+except ImportError:
+    TUYA_CONNECTOR_AVAILABLE = False
+    print("[WARN] tuya-connector-python não disponível - busca de local_key desabilitada")
+
 # =========================
 # CONFIG & AUTO-SETUP
 # =========================
@@ -44,7 +52,8 @@ def create_config_if_needed():
             "supabase": {
                 "url": "",
                 "anon_key": ""
-            }
+            },
+            "tuya_accounts": []
         }
         
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
@@ -92,6 +101,25 @@ def update_supabase_config(url: str, anon_key: str):
     SUPABASE_CONFIG = cfg["supabase"]
     log(f"[OK] Configuração do Supabase atualizada")
 
+def update_tuya_accounts(accounts: List[Dict[str, str]]):
+    """Atualiza as contas Tuya no config.json"""
+    # Carregar config existente
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+    else:
+        cfg = {}
+    
+    cfg["tuya_accounts"] = accounts
+    
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=4, ensure_ascii=False)
+    
+    # Atualizar variável global
+    global TUYA_ACCOUNTS
+    TUYA_ACCOUNTS = accounts
+    log(f"[OK] Configuração de contas Tuya atualizada: {len(accounts)} conta(s)")
+
 # cria se não existir
 create_config_if_needed()
 
@@ -101,13 +129,19 @@ if os.path.exists(CONFIG_PATH):
         cfg = json.load(f)
     SITE_NAME: str = cfg.get("site_name", "SITE_DESCONHECIDO")
     SUPABASE_CONFIG = cfg.get("supabase", {})
+    TUYA_ACCOUNTS = cfg.get("tuya_accounts", [])
 else:
     SITE_NAME = "SITE_DESCONHECIDO"
     SUPABASE_CONFIG = {}
+    TUYA_ACCOUNTS = []
 
 # Garantir que SUPABASE_CONFIG tem a estrutura correta
 if not isinstance(SUPABASE_CONFIG, dict):
     SUPABASE_CONFIG = {}
+
+# Garantir que TUYA_ACCOUNTS é uma lista
+if not isinstance(TUYA_ACCOUNTS, list):
+    TUYA_ACCOUNTS = []
 
 # Configurar Supabase automaticamente se as credenciais padrão estiverem disponíveis
 # (pode ser configurado via variáveis de ambiente ou hardcoded para desenvolvimento)
@@ -126,7 +160,29 @@ if not SUPABASE_CONFIG.get("url") or not SUPABASE_CONFIG.get("anon_key"):
     except Exception as e:
         log(f"[WARN] Não foi possível configurar Supabase automaticamente: {e}")
 
-print(f"[INFO] Servidor local iniciado para SITE = {SITE_NAME}")
+# Configurar contas Tuya padrão se não houver configuração
+# As credenciais podem ser configuradas via endpoint /config/tuya ou diretamente no config.json
+DEFAULT_TUYA_ACCOUNTS = [
+    {
+        "access_id": "td7tp3cvq3nrc35emwg3",
+        "access_key": "bbcdaa3dfe9545fca4326fcfa1cf3e2c",
+        "endpoint": "https://openapi.tuyaus.com",
+        "uid": "az1715569264750N2mUr"
+    },
+    {
+        "access_id": "wwxsqj37wnfdnp98wu54",
+        "access_key": "d7a140221f3b4e8f916601af4fbd6816",
+        "endpoint": "https://openapi.tuyaus.com",
+        "uid": "az1759235287550HcJRz"
+    }
+]
+
+if not TUYA_ACCOUNTS:
+    try:
+        update_tuya_accounts(DEFAULT_TUYA_ACCOUNTS)
+        log(f"[INFO] Contas Tuya configuradas automaticamente: {len(DEFAULT_TUYA_ACCOUNTS)} conta(s)")
+    except Exception as e:
+        log(f"[WARN] Não foi possível configurar contas Tuya automaticamente: {e}")
 
 print(f"[INFO] Servidor local iniciado para SITE = {SITE_NAME}")
 
@@ -570,6 +626,50 @@ app = Flask(__name__)
 def health():
     return jsonify({"status": "ok", "site": SITE_NAME}), 200
 
+@app.route("/config/tuya", methods=["POST"])
+def api_config_tuya():
+    """
+    Configura as contas Tuya para buscar local_key.
+    Body:
+    {
+        "accounts": [
+            {
+                "access_id": "td7tp3cvq3nrc35emwg3",
+                "access_key": "bbcdaa3dfe9545fca4326fcfa1cf3e2c",
+                "endpoint": "https://openapi.tuyaus.com",
+                "uid": "az1715569264750N2mUr"
+            },
+            ...
+        ]
+    }
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        accounts = data.get("accounts", [])
+        
+        if not accounts:
+            return jsonify({"ok": False, "error": "Nenhuma conta fornecida"}), 400
+        
+        # Validar contas
+        for account in accounts:
+            required_fields = ["access_id", "access_key", "endpoint", "uid"]
+            for field in required_fields:
+                if field not in account:
+                    return jsonify({"ok": False, "error": f"Campo obrigatório ausente: {field}"}), 400
+        
+        update_tuya_accounts(accounts)
+        
+        return jsonify({
+            "ok": True,
+            "message": f"{len(accounts)} conta(s) Tuya configurada(s)"
+        }), 200
+        
+    except Exception as e:
+        err = str(e)
+        log(f"[ERRO] API /config/tuya: {err}")
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": err}), 500
+
 @app.route("/config/supabase", methods=["POST"])
 def api_config_supabase():
     """
@@ -661,6 +761,59 @@ def api_tuya_devices():
         traceback.print_exc()
         return jsonify({"ok": False, "error": err}), 500
 
+def fetch_local_key_from_tuya_api(tuya_device_id: str) -> Optional[str]:
+    """
+    Busca a local_key de um dispositivo usando a API Tuya.
+    Tenta todas as contas configuradas até encontrar.
+    Retorna a local_key se encontrada, None caso contrário.
+    """
+    if not TUYA_CONNECTOR_AVAILABLE:
+        log("[TUYA_API] tuya-connector-python não está disponível")
+        return None
+    
+    if not TUYA_ACCOUNTS:
+        log("[TUYA_API] Nenhuma conta Tuya configurada")
+        return None
+    
+    for account in TUYA_ACCOUNTS:
+        try:
+            access_id = account.get("access_id")
+            access_key = account.get("access_key")
+            endpoint = account.get("endpoint")
+            uid = account.get("uid")
+            
+            if not all([access_id, access_key, endpoint, uid]):
+                log(f"[TUYA_API] Conta incompleta, pulando...")
+                continue
+            
+            log(f"[TUYA_API] Tentando buscar local_key para {tuya_device_id} na conta {access_id[:8]}...")
+            
+            api = TuyaOpenAPI(endpoint, access_id, access_key)
+            api.connect()
+            
+            # Buscar local_key via /v2.0/cloud/thing/{dev_id}
+            detail_v2 = api.get(f"/v2.0/cloud/thing/{tuya_device_id}", {})
+            
+            if detail_v2 and detail_v2.get("success"):
+                result = detail_v2.get("result", {}) or {}
+                local_key = result.get("local_key")
+                
+                if local_key:
+                    log(f"[TUYA_API] local_key encontrada para {tuya_device_id}: {local_key[:8]}...")
+                    return local_key
+                else:
+                    log(f"[TUYA_API] local_key não encontrada na resposta para {tuya_device_id}")
+            else:
+                log(f"[TUYA_API] Erro ao buscar /v2.0/cloud/thing/{tuya_device_id}: {detail_v2}")
+        
+        except Exception as e:
+            log(f"[TUYA_API] Erro ao buscar local_key na conta {account.get('access_id', 'unknown')[:8]}: {e}")
+            traceback.print_exc()
+            continue
+    
+    log(f"[TUYA_API] local_key não encontrada para {tuya_device_id} em nenhuma conta")
+    return None
+
 @app.route("/tuya/sync", methods=["POST"])
 def api_sync_devices():
     """
@@ -724,6 +877,16 @@ def api_sync_devices():
             device_extra_data = devices_data.get(tuya_id, {})
             name_from_body = device_extra_data.get("name")
             local_key_from_body = device_extra_data.get("local_key")
+            
+            # Se não temos local_key do body, tentar buscar da API Tuya
+            if not local_key_from_body:
+                log(f"[SYNC] Tentando buscar local_key da API Tuya para {tuya_id}...")
+                local_key_from_api = fetch_local_key_from_tuya_api(tuya_id)
+                if local_key_from_api:
+                    local_key_from_body = local_key_from_api
+                    log(f"[SYNC] local_key obtida da API Tuya para {tuya_id}")
+                else:
+                    log(f"[SYNC] Não foi possível obter local_key da API Tuya para {tuya_id}")
             
             # Verificar se device existe no banco
             if tuya_id in db_devices:
