@@ -1,0 +1,50 @@
+package com.mritsoftware.mritserver.adapter
+
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
+import com.mritsoftware.mritserver.R
+
+data class WelcomeDevice(
+    val id: String,
+    val ip: String,
+    val protocolVersion: String?
+)
+
+class WelcomeDeviceAdapter(
+    private val devices: MutableList<WelcomeDevice>
+) : RecyclerView.Adapter<WelcomeDeviceAdapter.DeviceViewHolder>() {
+
+    class DeviceViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val deviceName: TextView = itemView.findViewById(R.id.deviceName)
+        val deviceId: TextView = itemView.findViewById(R.id.deviceId)
+        val deviceIp: TextView = itemView.findViewById(R.id.deviceIp)
+        val deviceProtocol: TextView = itemView.findViewById(R.id.deviceProtocol)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_device_welcome, parent, false)
+        return DeviceViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
+        val device = devices[position]
+        
+        holder.deviceName.text = "Dispositivo ${device.id.take(8)}"
+        holder.deviceId.text = "ID: ${device.id}"
+        holder.deviceIp.text = "IP: ${device.ip}"
+        holder.deviceProtocol.text = "Protocolo: ${device.protocolVersion ?: "N/A"}"
+    }
+
+    override fun getItemCount() = devices.size
+    
+    fun updateDevices(newDevices: List<WelcomeDevice>) {
+        devices.clear()
+        devices.addAll(newDevices)
+        notifyDataSetChanged()
+    }
+}
+

@@ -99,3 +99,4 @@ As credenciais são salvas em `config.json` e podem ser atualizadas via API.
 - Comentários melhorados no código
 - Logs mais informativos para debugging
 
+

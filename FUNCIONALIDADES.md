@@ -373,3 +373,4 @@ Para problemas ou dúvidas, verifique:
 - Logs do Android (tag: "PythonServerService", "NetworkChangeReceiver", "LoadingSync")
 - Status do workflow no GitHub Actions
 
+
