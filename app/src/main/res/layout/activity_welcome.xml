@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E1E"
+    android:background="@drawable/bg_gradient_dark"
     tools:context=".ui.WelcomeActivity">
 
     <androidx.core.widget.NestedScrollView
@@ -23,129 +23,170 @@
             android:gravity="center_horizontal">
 
             <!-- Tela de Busca -->
-            <LinearLayout
-                android:id="@+id/searchingLayout"
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/searchingCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="32dp">
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="#30FFFFFF"
+                app:strokeWidth="1dp"
+                app:strokeColor="#50FFFFFF"
+                android:visibility="visible">
 
-                <ProgressBar
-                    android:id="@+id/searchProgressBar"
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="24dp"
-                    android:indeterminateTint="#9C27B0" />
-
-                <TextView
-                    android:id="@+id/searchingText"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:id="@+id/searchingLayout"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Buscando dispositivos..."
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:textColor="@android:color/white"
-                    android:layout_marginBottom="8dp" />
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="48dp">
 
-                <TextView
-                    android:id="@+id/searchingSubtext"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Escaneando a rede local"
-                    android:textSize="16sp"
-                    android:textColor="#B0B0B0" />
-            </LinearLayout>
+                    <ProgressBar
+                        android:id="@+id/searchProgressBar"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_marginBottom="24dp"
+                        android:indeterminateTint="#9C27B0" />
+
+                    <TextView
+                        android:id="@+id/searchingText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Buscando dispositivos..."
+                        android:textSize="26sp"
+                        android:textStyle="bold"
+                        android:textColor="@android:color/white"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:id="@+id/searchingSubtext"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Escaneando a rede local"
+                        android:textSize="16sp"
+                        android:textColor="#B0FFFFFF" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Tela de Dispositivos Encontrados -->
-            <LinearLayout
-                android:id="@+id/devicesFoundLayout"
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/devicesFoundCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="#30FFFFFF"
+                app:strokeWidth="1dp"
+                app:strokeColor="#50FFFFFF"
                 android:visibility="gone">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Dispositivos Encontrados"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:textColor="@android:color/white"
-                    android:layout_marginBottom="16dp" />
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/devicesRecyclerView"
+                <LinearLayout
+                    android:id="@+id/devicesFoundLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:nestedScrollingEnabled="false"
-                    android:layout_marginBottom="24dp"
-                    tools:listitem="@layout/item_device_welcome" />
+                    android:orientation="vertical"
+                    android:padding="24dp">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/startServerButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Ligar Servidor"
-                    android:textSize="18sp"
-                    android:backgroundTint="#4CAF50"
-                    android:layout_marginBottom="16dp"
-                    style="@style/Widget.MaterialComponents.Button" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Dispositivos Encontrados"
+                        android:textSize="28sp"
+                        android:textStyle="bold"
+                        android:textColor="@android:color/white"
+                        android:layout_marginBottom="20dp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/retrySearchButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Buscar Novamente"
-                    android:textSize="16sp"
-                    android:backgroundTint="#FF9800"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-            </LinearLayout>
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/devicesRecyclerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
+                        android:layout_marginBottom="24dp"
+                        tools:listitem="@layout/item_device_welcome" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/startServerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="Ligar Servidor"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:backgroundTint="#4CAF50"
+                        android:layout_marginBottom="16dp"
+                        style="@style/Widget.MaterialComponents.Button" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/retrySearchButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="Buscar Novamente"
+                        android:textSize="16sp"
+                        android:textColor="#FF9800"
+                        android:backgroundTint="#00FFFFFF"
+                        app:strokeColor="#FF9800"
+                        app:strokeWidth="2dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Tela de Nenhum Dispositivo Encontrado -->
-            <LinearLayout
-                android:id="@+id/noDevicesLayout"
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/noDevicesCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="32dp"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="#30FFFFFF"
+                app:strokeWidth="1dp"
+                app:strokeColor="#50FFFFFF"
                 android:visibility="gone">
 
-                <ImageView
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
-                    android:src="@android:drawable/ic_menu_search"
-                    android:layout_marginBottom="24dp"
-                    android:tint="#B0B0B0" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Nenhum dispositivo encontrado"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:textColor="@android:color/white"
-                    android:layout_marginBottom="8dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Verifique se os dispositivos estão conectados à mesma rede"
-                    android:textSize="14sp"
-                    android:textColor="#B0B0B0"
-                    android:gravity="center"
-                    android:layout_marginBottom="32dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/retrySearchButton2"
+                <LinearLayout
+                    android:id="@+id/noDevicesLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Buscar Novamente"
-                    android:textSize="18sp"
-                    android:backgroundTint="#9C27B0"
-                    style="@style/Widget.MaterialComponents.Button" />
-            </LinearLayout>
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="48dp">
+
+                    <ImageView
+                        android:layout_width="120dp"
+                        android:layout_height="120dp"
+                        android:src="@android:drawable/ic_menu_search"
+                        android:layout_marginBottom="24dp"
+                        android:tint="#80FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Nenhum dispositivo encontrado"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@android:color/white"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Verifique se os dispositivos estão conectados à mesma rede"
+                        android:textSize="15sp"
+                        android:textColor="#B0FFFFFF"
+                        android:gravity="center"
+                        android:layout_marginBottom="32dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/retrySearchButton2"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="Buscar Novamente"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:backgroundTint="#9C27B0"
+                        style="@style/Widget.MaterialComponents.Button" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

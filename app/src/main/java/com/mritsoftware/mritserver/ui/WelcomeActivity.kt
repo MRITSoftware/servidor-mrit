@@ -34,10 +34,6 @@ class WelcomeActivity : AppCompatActivity() {
     private lateinit var sharedPreferences: SharedPreferences
     
     // Views
-    private lateinit var searchingLayout: View
-    private lateinit var devicesFoundLayout: View
-    private lateinit var noDevicesLayout: View
-    private lateinit var searchProgressBar: ProgressBar
     private lateinit var searchingText: TextView
     private lateinit var searchingSubtext: TextView
     private lateinit var devicesRecyclerView: RecyclerView
@@ -79,10 +75,6 @@ class WelcomeActivity : AppCompatActivity() {
     }
     
     private fun setupViews() {
-        searchingLayout = findViewById(R.id.searchingLayout)
-        devicesFoundLayout = findViewById(R.id.devicesFoundLayout)
-        noDevicesLayout = findViewById(R.id.noDevicesLayout)
-        searchProgressBar = findViewById(R.id.searchProgressBar)
         searchingText = findViewById(R.id.searchingText)
         searchingSubtext = findViewById(R.id.searchingSubtext)
         devicesRecyclerView = findViewById(R.id.devicesRecyclerView)
@@ -123,9 +115,9 @@ class WelcomeActivity : AppCompatActivity() {
     
     private fun searchDevices() {
         // Mostrar tela de busca
-        searchingLayout.visibility = View.VISIBLE
-        devicesFoundLayout.visibility = View.GONE
-        noDevicesLayout.visibility = View.GONE
+        findViewById<View>(R.id.searchingCard).visibility = View.VISIBLE
+        findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
+        findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
         
         searchingText.text = "Buscando dispositivos..."
         searchingSubtext.text = "Escaneando a rede local"
@@ -199,15 +191,15 @@ class WelcomeActivity : AppCompatActivity() {
     }
     
     private fun showDevicesFound() {
-        searchingLayout.visibility = View.GONE
-        devicesFoundLayout.visibility = View.VISIBLE
-        noDevicesLayout.visibility = View.GONE
+        findViewById<View>(R.id.searchingCard).visibility = View.GONE
+        findViewById<View>(R.id.devicesFoundCard).visibility = View.VISIBLE
+        findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
     }
     
     private fun showNoDevices() {
-        searchingLayout.visibility = View.GONE
-        devicesFoundLayout.visibility = View.GONE
-        noDevicesLayout.visibility = View.VISIBLE
+        findViewById<View>(R.id.searchingCard).visibility = View.GONE
+        findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
+        findViewById<View>(R.id.noDevicesCard).visibility = View.VISIBLE
     }
     
     private fun syncWithSupabase() {
@@ -235,17 +227,14 @@ class WelcomeActivity : AppCompatActivity() {
                 }
                 
                 if (syncResult) {
-                    Toast.makeText(this@WelcomeActivity, "Sincronização concluída com sucesso!", Toast.LENGTH_SHORT).show()
-                    
                     // Salvar que a configuração foi concluída
                     sharedPreferences.edit()
                         .putBoolean("welcome_completed", true)
                         .putString("site_name", "ANDROID_DEVICE") // Nome padrão
                         .apply()
                     
-                    // Ir para MainActivity
-                    delay(1000)
-                    startMainActivity()
+                    // Ir para tela de sucesso
+                    startSuccessActivity()
                 } else {
                     Toast.makeText(this@WelcomeActivity, "Erro ao sincronizar com o servidor", Toast.LENGTH_LONG).show()
                     startServerButton.isEnabled = true
@@ -299,6 +288,12 @@ class WelcomeActivity : AppCompatActivity() {
     private fun isSiteConfigured(): Boolean {
         return sharedPreferences.getBoolean("welcome_completed", false) &&
                sharedPreferences.getString("site_name", null) != null
+    }
+    
+    private fun startSuccessActivity() {
+        val intent = Intent(this, SuccessActivity::class.java)
+        startActivity(intent)
+        finish()
     }
     
     private fun startMainActivity() {
