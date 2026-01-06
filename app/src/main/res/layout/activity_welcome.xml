@@ -90,7 +90,7 @@
                     android:textSize="18sp"
                     android:backgroundTint="#4CAF50"
                     android:layout_marginBottom="16dp"
-                    style="@style/Widget.Material3.Button" />
+                    style="@style/Widget.MaterialComponents.Button" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/retrySearchButton"
@@ -99,7 +99,7 @@
                     android:text="Buscar Novamente"
                     android:textSize="16sp"
                     android:backgroundTint="#FF9800"
-                    style="@style/Widget.Material3.Button.Outlined" />
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
             </LinearLayout>
 
             <!-- Tela de Nenhum Dispositivo Encontrado -->
@@ -144,7 +144,7 @@
                     android:text="Buscar Novamente"
                     android:textSize="18sp"
                     android:backgroundTint="#9C27B0"
-                    style="@style/Widget.Material3.Button" />
+                    style="@style/Widget.MaterialComponents.Button" />
             </LinearLayout>
 
         </LinearLayout>
