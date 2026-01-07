@@ -84,6 +84,11 @@ class ConnectedActivity : AppCompatActivity() {
         recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         recyclerView.adapter = adapter
         
+        // Configurar clique no dispositivo ANTES de buscar
+        adapter.setOnDeviceClickListener { device ->
+            connectNewDevice(device, dialog)
+        }
+        
         // Buscar dispositivos ao abrir
         scanDevicesForDialog(dialogView, progressBar, emptyText, recyclerView, devices, adapter, dialog)
         
@@ -103,44 +108,54 @@ class ConnectedActivity : AppCompatActivity() {
         adapter: WelcomeDeviceAdapter,
         dialog: androidx.appcompat.app.AlertDialog
     ) {
-        progressBar.visibility = View.VISIBLE
-        emptyText.visibility = View.GONE
-        recyclerView.visibility = View.GONE
+        runOnUiThread {
+            progressBar.visibility = View.VISIBLE
+            emptyText.visibility = View.GONE
+            recyclerView.visibility = View.GONE
+        }
         
         coroutineScope.launch {
             try {
-                // Inicializar Python se necessário
-                if (!com.chaquo.python.Python.isStarted()) {
-                    com.chaquo.python.Python.start(com.chaquo.python.android.AndroidPlatform(this@ConnectedActivity))
-                }
-                
-                val python = com.chaquo.python.Python.getInstance()
-                val module = python.getModule("tuya_server")
-                
-                // Chamar scan_devices do Python
+                // Usar endpoint HTTP do servidor (mais confiável)
                 val scanResult = withContext(Dispatchers.IO) {
                     try {
-                        val result = module.callAttr("scan_devices")
-                        if (result != null) {
-                            val devicesMap = mutableMapOf<String, Map<String, String>>()
+                        val url = URL("http://127.0.0.1:8000/tuya/devices")
+                        val connection = url.openConnection() as HttpURLConnection
+                        connection.requestMethod = "GET"
+                        connection.connectTimeout = 35000  // 35 segundos para dar tempo do scan
+                        connection.readTimeout = 35000
+                        
+                        val responseCode = connection.responseCode
+                        if (responseCode == 200) {
+                            val reader = java.io.BufferedReader(java.io.InputStreamReader(connection.inputStream))
+                            val response = reader.readText()
+                            reader.close()
                             
-                            val pyDict = result.asMap()
-                            for ((key, value) in pyDict) {
-                                val deviceId = key.toString()
-                                val deviceInfo = value?.asMap() ?: emptyMap()
+                            val json = org.json.JSONObject(response)
+                            if (json.getBoolean("ok")) {
+                                val devicesArray = json.getJSONArray("devices")
+                                val devicesMap = mutableMapOf<String, Map<String, String>>()
                                 
-                                val deviceMap = mutableMapOf<String, String>()
-                                for ((infoKey, infoValue) in deviceInfo) {
-                                    deviceMap[infoKey.toString()] = infoValue?.toString() ?: ""
+                                for (i in 0 until devicesArray.length()) {
+                                    val deviceObj = devicesArray.getJSONObject(i)
+                                    val deviceId = deviceObj.getString("id")
+                                    devicesMap[deviceId] = mapOf(
+                                        "id" to deviceId,
+                                        "ip" to deviceObj.optString("ip", ""),
+                                        "version" to deviceObj.optString("version", "")
+                                    )
                                 }
-                                devicesMap[deviceId] = deviceMap
+                                devicesMap
+                            } else {
+                                null
                             }
-                            devicesMap
                         } else {
+                            android.util.Log.e("ConnectedActivity", "Erro HTTP ao buscar dispositivos: $responseCode")
                             null
                         }
                     } catch (e: Exception) {
-                        android.util.Log.e("ConnectedActivity", "Erro ao escanear dispositivos", e)
+                        android.util.Log.e("ConnectedActivity", "Erro ao buscar dispositivos via HTTP", e)
+                        e.printStackTrace()
                         null
                     }
                 }
@@ -148,9 +163,11 @@ class ConnectedActivity : AppCompatActivity() {
                 devices.clear()
                 
                 if (scanResult != null && scanResult.isNotEmpty()) {
+                    android.util.Log.d("ConnectedActivity", "Encontrados ${scanResult.size} dispositivos")
+                    
                     for ((deviceId, deviceInfo) in scanResult) {
                         val ip = deviceInfo["ip"] ?: ""
-                        val version = deviceInfo["version"]?.toString()
+                        val version = deviceInfo["version"] ?: ""
                         
                         devices.add(
                             WelcomeDevice(
@@ -167,27 +184,40 @@ class ConnectedActivity : AppCompatActivity() {
                         progressBar.visibility = View.GONE
                         recyclerView.visibility = View.VISIBLE
                         emptyText.visibility = View.GONE
+                        
+                        android.widget.Toast.makeText(
+                            this@ConnectedActivity,
+                            "${devices.size} dispositivo(s) encontrado(s)",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                     }
                 } else {
+                    android.util.Log.d("ConnectedActivity", "Nenhum dispositivo encontrado")
                     runOnUiThread {
                         progressBar.visibility = View.GONE
                         recyclerView.visibility = View.GONE
                         emptyText.visibility = View.VISIBLE
+                        android.widget.Toast.makeText(
+                            this@ConnectedActivity,
+                            "Nenhum dispositivo encontrado na rede",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("ConnectedActivity", "Erro ao buscar dispositivos", e)
+                e.printStackTrace()
                 runOnUiThread {
                     progressBar.visibility = View.GONE
                     recyclerView.visibility = View.GONE
                     emptyText.visibility = View.VISIBLE
+                    android.widget.Toast.makeText(
+                        this@ConnectedActivity,
+                        "Erro ao buscar dispositivos: ${e.message}",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
                 }
             }
-        }
-        
-        // Configurar clique no dispositivo
-        adapter.setOnDeviceClickListener { device ->
-            connectNewDevice(device, dialog)
         }
     }
     
