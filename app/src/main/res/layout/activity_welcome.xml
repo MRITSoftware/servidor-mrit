@@ -121,8 +121,7 @@
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         app:boxStrokeColor="#80FFFFFF"
                         app:hintTextColor="#E0FFFFFF"
-                        app:boxBackgroundColor="#20FFFFFF"
-                        app:required="true">
+                        app:boxBackgroundColor="#20FFFFFF">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/siteNameInput"
