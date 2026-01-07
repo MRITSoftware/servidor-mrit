@@ -86,16 +86,6 @@
                 android:textSize="34sp"
                 android:textStyle="bold"
                 android:textColor="@android:color/white"
-                android:layout_marginBottom="16dp" />
-
-            <TextView
-                android:id="@+id/statusSubtext"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Servidor ativo e pronto para uso"
-                android:textSize="16sp"
-                android:textColor="#E0FFFFFF"
-                android:gravity="center"
                 android:layout_marginBottom="32dp" />
 
             <!-- Site Name -->
@@ -106,9 +96,44 @@
                 android:textSize="18sp"
                 android:textColor="#B0FFFFFF"
                 android:gravity="center"
-                android:textStyle="italic" />
+                android:textStyle="italic"
+                android:layout_marginBottom="40dp" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
+
+    <!-- Footer -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="© MRIT"
+        android:textSize="14sp"
+        android:textColor="#80FFFFFF"
+        android:layout_marginBottom="24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Botão Trocar Dispositivo -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/changeDeviceButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Trocar"
+        android:textSize="14sp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:backgroundTint="#20FFFFFF"
+        android:textColor="@android:color/white"
+        app:strokeColor="#60FFFFFF"
+        app:strokeWidth="1dp"
+        app:cornerRadius="20dp"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 

@@ -340,6 +340,7 @@ def create_device_in_db(
 
 def update_device_in_db(
     tuya_device_id: str,
+    site_id: Optional[str] = None,
     name: Optional[str] = None,
     local_key: Optional[str] = None,
     lan_ip: Optional[str] = None,
@@ -363,6 +364,9 @@ def update_device_in_db(
         
         # Construir dict com apenas os campos que foram fornecidos
         update_data = {}
+        
+        if site_id is not None:
+            update_data['site_id'] = site_id
         
         if name is not None:
             update_data['name'] = name
@@ -820,10 +824,11 @@ def api_sync_devices():
     Sincroniza devices encontrados na rede LAN com a tabela tuya_devices.
     Para cada device encontrado na rede, se existir na tabela com mesmo tuya_device_id,
     atualiza: lan_ip, protocol_version (sempre que disponíveis do scan).
-    Opcionalmente pode receber name e local_key no body para atualizar também.
+    Opcionalmente pode receber site_id, name e local_key no body para atualizar também.
     
     Body opcional:
     {
+        "site_id": "Nome da Unidade",
         "devices": {
             "tuya_device_id_1": {
                 "name": "Nome do Device",
@@ -838,6 +843,7 @@ def api_sync_devices():
         
         # Ler dados opcionais do body
         body_data = request.get_json(silent=True) or {}
+        site_id_from_body = body_data.get("site_id") or SITE_NAME
         devices_data = body_data.get("devices", {})
         
         # 1) Fazer scan LAN para pegar devices na rede
@@ -906,6 +912,11 @@ def api_sync_devices():
                     update_data['protocol_version'] = protocol_version
                     update_needed = True
                 
+                # Atualizar site_id se fornecido no body
+                if site_id_from_body and site_id_from_body != db_info.get('site_id'):
+                    update_data['site_id'] = site_id_from_body
+                    update_needed = True
+                
                 # Atualizar name se fornecido no body
                 if name_from_body and name_from_body != db_info.get('name'):
                     update_data['name'] = name_from_body
@@ -919,6 +930,7 @@ def api_sync_devices():
                 if update_needed:
                     success = update_device_in_db(
                         tuya_device_id=tuya_id,
+                        site_id=update_data.get('site_id'),
                         name=update_data.get('name'),
                         local_key=update_data.get('local_key'),
                         lan_ip=update_data.get('lan_ip'),
@@ -941,7 +953,7 @@ def api_sync_devices():
                 
                 success = create_device_in_db(
                     tuya_device_id=tuya_id,
-                    site_id=SITE_NAME,
+                    site_id=site_id_from_body,
                     name=name_from_body,
                     local_key=local_key_from_body,
                     lan_ip=lan_ip,

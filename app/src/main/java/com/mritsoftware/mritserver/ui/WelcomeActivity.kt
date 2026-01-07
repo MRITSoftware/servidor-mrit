@@ -236,11 +236,12 @@ class WelcomeActivity : AppCompatActivity() {
                 val devicesData = JSONObject()
                 for (device in devices) {
                     devicesData.put(device.id, JSONObject().apply {
-                        // Não enviar name nem local_key, apenas deixar o servidor atualizar protocol_version e lan_ip
+                        put("name", siteName) // Nome da unidade como name do device
                     })
                 }
                 
                 val syncBody = JSONObject().apply {
+                    put("site_id", siteName) // site_id é o nome da unidade
                     put("devices", devicesData)
                 }
                 

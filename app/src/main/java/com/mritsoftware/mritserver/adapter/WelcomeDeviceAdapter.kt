@@ -16,6 +16,12 @@ data class WelcomeDevice(
 class WelcomeDeviceAdapter(
     private val devices: MutableList<WelcomeDevice>
 ) : RecyclerView.Adapter<WelcomeDeviceAdapter.DeviceViewHolder>() {
+    
+    private var onDeviceClickListener: ((WelcomeDevice) -> Unit)? = null
+    
+    fun setOnDeviceClickListener(listener: (WelcomeDevice) -> Unit) {
+        onDeviceClickListener = listener
+    }
 
     class DeviceViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val deviceName: TextView = itemView.findViewById(R.id.deviceName)
@@ -37,6 +43,10 @@ class WelcomeDeviceAdapter(
         holder.deviceId.text = "ID: ${device.id}"
         holder.deviceIp.text = "IP: ${device.ip}"
         holder.deviceProtocol.text = "Protocolo: ${device.protocolVersion ?: "N/A"}"
+        
+        holder.itemView.setOnClickListener {
+            onDeviceClickListener?.invoke(device)
+        }
     }
 
     override fun getItemCount() = devices.size

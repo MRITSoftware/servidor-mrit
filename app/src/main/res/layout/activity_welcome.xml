@@ -116,12 +116,13 @@
                         android:id="@+id/siteNameInputLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Nome da Unidade"
+                        android:hint="Nome da Unidade *"
                         android:layout_marginBottom="20dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         app:boxStrokeColor="#80FFFFFF"
                         app:hintTextColor="#E0FFFFFF"
-                        app:boxBackgroundColor="#20FFFFFF">
+                        app:boxBackgroundColor="#20FFFFFF"
+                        app:required="true">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/siteNameInput"
