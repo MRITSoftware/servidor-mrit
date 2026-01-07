@@ -87,8 +87,8 @@ class LocalIpMonitorService(private val context: Context) {
         
         if (savedIp != null && savedIp != currentIp) {
             Log.d(TAG, "IP local mudou: $savedIp -> $currentIp")
-            // Atualizar IP no banco
-            updateIpInDatabase(currentIp)
+            // IP mudou, fazer scan e atualizar dispositivos no banco
+            scanAndUpdateDevicesInDatabase()
         } else if (savedIp == null) {
             // Primeira vez, apenas salvar
             Log.d(TAG, "Salvando IP local inicial: $currentIp")
@@ -98,7 +98,7 @@ class LocalIpMonitorService(private val context: Context) {
         prefs.edit().putString(KEY_LOCAL_IP, currentIp).apply()
     }
     
-    private suspend fun updateIpInDatabase(newIp: String) {
+    private suspend fun scanAndUpdateDevicesInDatabase() {
         try {
             // Verificar se o servidor está rodando
             val healthUrl = URL("http://127.0.0.1:8000/health")
@@ -111,81 +111,60 @@ class LocalIpMonitorService(private val context: Context) {
             healthConnection.disconnect()
             
             if (healthCode != 200) {
-                Log.w(TAG, "Servidor não está respondendo, não é possível atualizar IP no banco")
+                Log.w(TAG, "Servidor não está respondendo, não é possível atualizar dispositivos")
                 return
             }
             
-            // Buscar dispositivos conectados e atualizar IP
+            // Buscar site name
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val siteName = prefs.getString("site_name", null)
             
             if (siteName == null) {
-                Log.w(TAG, "Site name não encontrado, não é possível atualizar IP")
+                Log.w(TAG, "Site name não encontrado, não é possível atualizar dispositivos")
                 return
             }
             
-            // Buscar dispositivos do site
-            val devicesUrl = URL("http://127.0.0.1:8000/tuya/devices")
-            val devicesConnection = devicesUrl.openConnection() as HttpURLConnection
-            devicesConnection.requestMethod = "GET"
-            devicesConnection.connectTimeout = 10000
-            devicesConnection.readTimeout = 10000
+            Log.d(TAG, "IP local mudou, fazendo scan de dispositivos e atualizando banco...")
             
-            val devicesCode = devicesConnection.responseCode
-            if (devicesCode == 200) {
-                val reader = BufferedReader(InputStreamReader(devicesConnection.inputStream))
+            // Fazer scan de dispositivos (isso vai atualizar os IPs automaticamente)
+            // O endpoint /tuya/sync faz scan e atualiza IPs automaticamente
+            val syncBody = JSONObject().apply {
+                put("site_id", siteName)
+                put("devices", JSONObject()) // Objeto vazio, o servidor fará scan
+            }
+            
+            // Chamar sync para fazer scan e atualizar IPs
+            val syncUrl = URL("http://127.0.0.1:8000/tuya/sync")
+            val syncConnection = syncUrl.openConnection() as HttpURLConnection
+            syncConnection.requestMethod = "POST"
+            syncConnection.setRequestProperty("Content-Type", "application/json")
+            syncConnection.doOutput = true
+            syncConnection.connectTimeout = 40000  // 40 segundos para dar tempo do scan
+            syncConnection.readTimeout = 40000
+            
+            val writer = OutputStreamWriter(syncConnection.outputStream, "UTF-8")
+            writer.write(syncBody.toString())
+            writer.flush()
+            writer.close()
+            
+            val syncCode = syncConnection.responseCode
+            if (syncCode == 200) {
+                val reader = BufferedReader(InputStreamReader(syncConnection.inputStream))
                 val response = reader.readText()
                 reader.close()
-                devicesConnection.disconnect()
                 
                 val json = JSONObject(response)
                 if (json.getBoolean("ok")) {
-                    val devicesArray = json.getJSONArray("devices")
-                    
-                    // Preparar dados para sincronização
-                    val devicesData = JSONObject()
-                    for (i in 0 until devicesArray.length()) {
-                        val deviceObj = devicesArray.getJSONObject(i)
-                        val deviceId = deviceObj.getString("id")
-                        devicesData.put(deviceId, JSONObject().apply {
-                            // Apenas atualizar site_id para forçar atualização
-                        })
-                    }
-                    
-                    val syncBody = JSONObject().apply {
-                        put("site_id", siteName)
-                        put("devices", devicesData)
-                    }
-                    
-                    // Chamar sync para atualizar IPs
-                    val syncUrl = URL("http://127.0.0.1:8000/tuya/sync")
-                    val syncConnection = syncUrl.openConnection() as HttpURLConnection
-                    syncConnection.requestMethod = "POST"
-                    syncConnection.setRequestProperty("Content-Type", "application/json")
-                    syncConnection.doOutput = true
-                    syncConnection.connectTimeout = 30000
-                    syncConnection.readTimeout = 30000
-                    
-                    val writer = OutputStreamWriter(syncConnection.outputStream, "UTF-8")
-                    writer.write(syncBody.toString())
-                    writer.flush()
-                    writer.close()
-                    
-                    val syncCode = syncConnection.responseCode
-                    syncConnection.disconnect()
-                    
-                    if (syncCode == 200) {
-                        Log.d(TAG, "IP atualizado no banco com sucesso")
-                    } else {
-                        Log.w(TAG, "Erro ao atualizar IP no banco: código $syncCode")
-                    }
+                    val updated = json.optInt("updated", 0)
+                    val created = json.optInt("created", 0)
+                    Log.d(TAG, "Dispositivos atualizados no banco: $updated atualizados, $created criados")
                 }
             } else {
-                devicesConnection.disconnect()
-                Log.w(TAG, "Erro ao buscar dispositivos: código $devicesCode")
+                Log.w(TAG, "Erro ao sincronizar dispositivos: código $syncCode")
             }
+            syncConnection.disconnect()
         } catch (e: Exception) {
-            Log.e(TAG, "Erro ao atualizar IP no banco", e)
+            Log.e(TAG, "Erro ao atualizar dispositivos no banco", e)
         }
     }
 }
