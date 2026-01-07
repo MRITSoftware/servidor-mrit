@@ -140,39 +140,108 @@ class WelcomeActivity : AppCompatActivity() {
         
         coroutineScope.launch {
             try {
-                // Inicializar Python se necessário
-                if (!com.chaquo.python.Python.isStarted()) {
-                    com.chaquo.python.Python.start(com.chaquo.python.android.AndroidPlatform(this@WelcomeActivity))
-                }
+                // Aguardar um pouco mais para garantir que o servidor está pronto
+                delay(2000)
                 
-                val python = com.chaquo.python.Python.getInstance()
-                val module = python.getModule("tuya_server")
-                
-                // Chamar scan_devices do Python
+                // Tentar usar o endpoint HTTP primeiro
                 val scanResult = withContext(Dispatchers.IO) {
                     try {
-                        val result = module.callAttr("scan_devices")
-                        if (result != null) {
-                            val devicesMap = mutableMapOf<String, Map<String, String>>()
+                        // Verificar se o servidor HTTP está respondendo
+                        val healthUrl = URL("http://127.0.0.1:8000/health")
+                        val healthConnection = healthUrl.openConnection() as HttpURLConnection
+                        healthConnection.requestMethod = "GET"
+                        healthConnection.connectTimeout = 3000
+                        healthConnection.readTimeout = 3000
+                        
+                        val healthCode = healthConnection.responseCode
+                        healthConnection.disconnect()
+                        
+                        if (healthCode == 200) {
+                            // Servidor HTTP está rodando, usar endpoint
+                            Log.d("WelcomeActivity", "Usando endpoint HTTP para buscar dispositivos")
+                            val devicesUrl = URL("http://127.0.0.1:8000/tuya/devices")
+                            val devicesConnection = devicesUrl.openConnection() as HttpURLConnection
+                            devicesConnection.requestMethod = "GET"
+                            devicesConnection.connectTimeout = 40000
+                            devicesConnection.readTimeout = 40000
                             
-                            val pyDict = result.asMap()
-                            for ((key, value) in pyDict) {
-                                val deviceId = key.toString()
-                                val deviceInfo = value?.asMap() ?: emptyMap()
+                            val devicesCode = devicesConnection.responseCode
+                            if (devicesCode == 200) {
+                                val reader = BufferedReader(InputStreamReader(devicesConnection.inputStream))
+                                val response = reader.readText()
+                                reader.close()
+                                devicesConnection.disconnect()
                                 
-                                val deviceMap = mutableMapOf<String, String>()
-                                for ((infoKey, infoValue) in deviceInfo) {
-                                    deviceMap[infoKey.toString()] = infoValue?.toString() ?: ""
+                                val json = JSONObject(response)
+                                if (json.getBoolean("ok")) {
+                                    val devicesArray = json.getJSONArray("devices")
+                                    val devicesMap = mutableMapOf<String, Map<String, String>>()
+                                    
+                                    for (i in 0 until devicesArray.length()) {
+                                        val deviceObj = devicesArray.getJSONObject(i)
+                                        val deviceId = deviceObj.getString("id")
+                                        val deviceMap = mutableMapOf<String, String>()
+                                        deviceMap["ip"] = deviceObj.optString("ip", "")
+                                        deviceMap["version"] = deviceObj.optString("protocol_version", "")
+                                        devicesMap[deviceId] = deviceMap
+                                    }
+                                    
+                                    Log.d("WelcomeActivity", "Encontrados ${devicesMap.size} dispositivos via HTTP")
+                                    devicesMap
+                                } else {
+                                    null
                                 }
-                                devicesMap[deviceId] = deviceMap
+                            } else {
+                                devicesConnection.disconnect()
+                                null
                             }
-                            devicesMap
                         } else {
+                            // Servidor HTTP não está rodando, usar Python direto
+                            Log.d("WelcomeActivity", "Servidor HTTP não está pronto, usando Python direto")
                             null
                         }
                     } catch (e: Exception) {
-                        Log.e("WelcomeActivity", "Erro ao escanear dispositivos", e)
+                        Log.e("WelcomeActivity", "Erro ao tentar usar endpoint HTTP", e)
                         null
+                    }
+                } ?: run {
+                    // Fallback: usar Python direto
+                    Log.d("WelcomeActivity", "Usando Python direto para buscar dispositivos")
+                    withContext(Dispatchers.IO) {
+                        try {
+                            // Inicializar Python se necessário
+                            if (!com.chaquo.python.Python.isStarted()) {
+                                com.chaquo.python.Python.start(com.chaquo.python.android.AndroidPlatform(this@WelcomeActivity))
+                            }
+                            
+                            val python = com.chaquo.python.Python.getInstance()
+                            val module = python.getModule("tuya_server")
+                            
+                            val result = module.callAttr("scan_devices")
+                            if (result != null) {
+                                val devicesMap = mutableMapOf<String, Map<String, String>>()
+                                
+                                val pyDict = result.asMap()
+                                for ((key, value) in pyDict) {
+                                    val deviceId = key.toString()
+                                    val deviceInfo = value?.asMap() ?: emptyMap()
+                                    
+                                    val deviceMap = mutableMapOf<String, String>()
+                                    for ((infoKey, infoValue) in deviceInfo) {
+                                        deviceMap[infoKey.toString()] = infoValue?.toString() ?: ""
+                                    }
+                                    devicesMap[deviceId] = deviceMap
+                                }
+                                
+                                Log.d("WelcomeActivity", "Encontrados ${devicesMap.size} dispositivos via Python")
+                                devicesMap
+                            } else {
+                                null
+                            }
+                        } catch (e: Exception) {
+                            Log.e("WelcomeActivity", "Erro ao escanear dispositivos via Python", e)
+                            null
+                        }
                     }
                 }
                 
@@ -192,16 +261,25 @@ class WelcomeActivity : AppCompatActivity() {
                         )
                     }
                     
-                    // Mostrar dispositivos encontrados
-                    deviceAdapter.updateDevices(devices)
-                    showDevicesFound()
+                    // Atualizar UI na thread principal
+                    withContext(Dispatchers.Main) {
+                        deviceAdapter.updateDevices(devices)
+                        showDevicesFound()
+                        Log.d("WelcomeActivity", "Dispositivos encontrados: ${devices.size}")
+                    }
                 } else {
                     // Nenhum dispositivo encontrado
-                    showNoDevices()
+                    withContext(Dispatchers.Main) {
+                        showNoDevices()
+                        Log.d("WelcomeActivity", "Nenhum dispositivo encontrado")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("WelcomeActivity", "Erro ao buscar dispositivos", e)
-                showNoDevices()
+                withContext(Dispatchers.Main) {
+                    showNoDevices()
+                    Toast.makeText(this@WelcomeActivity, "Erro ao buscar dispositivos: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
