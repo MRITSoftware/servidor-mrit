@@ -99,7 +99,7 @@ class WelcomeActivity : AppCompatActivity() {
         }
         devicesRecyclerView.layoutManager = LinearLayoutManager(this)
         devicesRecyclerView.adapter = deviceAdapter
-        devicesRecyclerView.setHasFixedSize(true)
+        // Não usar setHasFixedSize(true) quando layout_height é wrap_content
         devicesRecyclerView.isNestedScrollingEnabled = false
     }
     
