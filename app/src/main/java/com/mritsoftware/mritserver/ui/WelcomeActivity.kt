@@ -92,7 +92,8 @@ class WelcomeActivity : AppCompatActivity() {
     }
     
     private fun setupRecyclerView() {
-        deviceAdapter = WelcomeDeviceAdapter(devices)
+        // Criar adapter com uma lista vazia inicial - ele terá sua própria cópia
+        deviceAdapter = WelcomeDeviceAdapter(mutableListOf())
         deviceAdapter.setOnDeviceClickListener { device ->
             selectedDevice = device
             showDeviceNameInput()
@@ -101,7 +102,7 @@ class WelcomeActivity : AppCompatActivity() {
         devicesRecyclerView.adapter = deviceAdapter
         // Desabilitar nested scrolling para funcionar dentro do NestedScrollView
         devicesRecyclerView.isNestedScrollingEnabled = false
-        Log.d("WelcomeActivity", "RecyclerView configurado, adapter inicializado com ${devices.size} itens")
+        Log.d("WelcomeActivity", "RecyclerView configurado, adapter inicializado")
     }
     
     private fun setupListeners() {
@@ -248,14 +249,15 @@ class WelcomeActivity : AppCompatActivity() {
                     }
                 }
                 
-                devices.clear()
+                // Criar uma nova lista para evitar problemas de referência
+                val newDevicesList = mutableListOf<WelcomeDevice>()
                 
                 if (scanResult != null && scanResult.isNotEmpty()) {
                     for ((deviceId, deviceInfo) in scanResult) {
                         val ip = deviceInfo["ip"] ?: ""
                         val version = deviceInfo["version"]?.toString()
                         
-                        devices.add(
+                        newDevicesList.add(
                             WelcomeDevice(
                                 id = deviceId,
                                 ip = ip,
@@ -266,14 +268,18 @@ class WelcomeActivity : AppCompatActivity() {
                     
                     // Atualizar UI na thread principal
                     withContext(Dispatchers.Main) {
-                        Log.d("WelcomeActivity", "Preparando para exibir ${devices.size} dispositivos")
-                        Log.d("WelcomeActivity", "Dispositivos: ${devices.map { "${it.id} - ${it.ip}" }}")
+                        Log.d("WelcomeActivity", "Preparando para exibir ${newDevicesList.size} dispositivos")
+                        Log.d("WelcomeActivity", "Dispositivos: ${newDevicesList.map { "${it.id} - ${it.ip}" }}")
+                        
+                        // Atualizar a lista devices ANTES de atualizar o adapter
+                        devices.clear()
+                        devices.addAll(newDevicesList)
                         
                         // Toast para debug - mostrar quantos dispositivos foram encontrados
                         Toast.makeText(
                             this@WelcomeActivity,
                             "Encontrados ${devices.size} dispositivo(s)",
-                            Toast.LENGTH_LONG
+                            Toast.LENGTH_SHORT
                         ).show()
                         
                         // Garantir que o adapter está configurado no RecyclerView
@@ -281,8 +287,8 @@ class WelcomeActivity : AppCompatActivity() {
                             devicesRecyclerView.adapter = deviceAdapter
                         }
                         
-                        // Atualizar adapter com os novos dispositivos
-                        deviceAdapter.updateDevices(devices)
+                        // Atualizar adapter com uma CÓPIA da lista para evitar problemas de referência
+                        deviceAdapter.updateDevices(devices.toList())
                         
                         // Mostrar tela de dispositivos encontrados
                         showDevicesFound()
@@ -292,18 +298,18 @@ class WelcomeActivity : AppCompatActivity() {
                         Log.d("WelcomeActivity", "RecyclerView visibility: ${devicesRecyclerView.visibility}")
                         Log.d("WelcomeActivity", "RecyclerView adapter: ${devicesRecyclerView.adapter != null}")
                         
-                        // Toast adicional para mostrar quantos itens o adapter tem
-                        Toast.makeText(
-                            this@WelcomeActivity,
-                            "Adapter tem ${deviceAdapter.itemCount} item(ns)",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        
-                        // Forçar layout após um pequeno delay para garantir que a view está visível
+                        // Toast adicional para mostrar quantos itens o adapter tem (com delay para garantir atualização)
                         devicesRecyclerView.postDelayed({
+                            Toast.makeText(
+                                this@WelcomeActivity,
+                                "Adapter tem ${deviceAdapter.itemCount} item(ns)",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            
+                            // Forçar layout
                             devicesRecyclerView.requestLayout()
                             devicesRecyclerView.invalidate()
-                        }, 100)
+                        }, 200)
                     }
                 } else {
                     // Nenhum dispositivo encontrado
