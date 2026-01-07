@@ -99,8 +99,9 @@ class WelcomeActivity : AppCompatActivity() {
         }
         devicesRecyclerView.layoutManager = LinearLayoutManager(this)
         devicesRecyclerView.adapter = deviceAdapter
-        // Não usar setHasFixedSize(true) quando layout_height é wrap_content
+        // Desabilitar nested scrolling para funcionar dentro do NestedScrollView
         devicesRecyclerView.isNestedScrollingEnabled = false
+        Log.d("WelcomeActivity", "RecyclerView configurado, adapter inicializado com ${devices.size} itens")
     }
     
     private fun setupListeners() {
@@ -268,28 +269,27 @@ class WelcomeActivity : AppCompatActivity() {
                         Log.d("WelcomeActivity", "Preparando para exibir ${devices.size} dispositivos")
                         Log.d("WelcomeActivity", "Dispositivos: ${devices.map { "${it.id} - ${it.ip}" }}")
                         
-                        // Atualizar adapter ANTES de mostrar a tela
-                        deviceAdapter.updateDevices(devices)
-                        
                         // Garantir que o adapter está configurado no RecyclerView
                         if (devicesRecyclerView.adapter == null) {
                             devicesRecyclerView.adapter = deviceAdapter
                         }
                         
-                        // Mostrar tela
-                        showDevicesFound()
+                        // Atualizar adapter com os novos dispositivos
+                        deviceAdapter.updateDevices(devices)
                         
-                        // Forçar atualização do RecyclerView após mostrar a tela
-                        devicesRecyclerView.post {
-                            devicesRecyclerView.visibility = View.VISIBLE
-                            deviceAdapter.notifyDataSetChanged()
-                            devicesRecyclerView.requestLayout()
-                        }
+                        // Mostrar tela de dispositivos encontrados
+                        showDevicesFound()
                         
                         // Verificar se o adapter tem itens
                         Log.d("WelcomeActivity", "Adapter itemCount: ${deviceAdapter.itemCount}")
                         Log.d("WelcomeActivity", "RecyclerView visibility: ${devicesRecyclerView.visibility}")
                         Log.d("WelcomeActivity", "RecyclerView adapter: ${devicesRecyclerView.adapter != null}")
+                        
+                        // Forçar layout após um pequeno delay para garantir que a view está visível
+                        devicesRecyclerView.postDelayed({
+                            devicesRecyclerView.requestLayout()
+                            devicesRecyclerView.invalidate()
+                        }, 100)
                     }
                 } else {
                     // Nenhum dispositivo encontrado
@@ -319,7 +319,8 @@ class WelcomeActivity : AppCompatActivity() {
         if (devicesRecyclerView.adapter == null) {
             devicesRecyclerView.adapter = deviceAdapter
         }
-        // O notifyDataSetChanged será chamado após mostrar a tela
+        // Forçar atualização do adapter
+        deviceAdapter.notifyDataSetChanged()
     }
     
     private fun showDeviceNameInput() {

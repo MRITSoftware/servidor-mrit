@@ -59,9 +59,12 @@ class WelcomeDeviceAdapter(
     override fun getItemCount() = devices.size
     
     fun updateDevices(newDevices: List<WelcomeDevice>) {
+        android.util.Log.d("WelcomeDeviceAdapter", "updateDevices chamado com ${newDevices.size} dispositivos")
         devices.clear()
         devices.addAll(newDevices)
+        android.util.Log.d("WelcomeDeviceAdapter", "Adapter agora tem ${devices.size} itens, itemCount=${itemCount}")
         notifyDataSetChanged()
+        android.util.Log.d("WelcomeDeviceAdapter", "notifyDataSetChanged() chamado")
     }
 }
 
