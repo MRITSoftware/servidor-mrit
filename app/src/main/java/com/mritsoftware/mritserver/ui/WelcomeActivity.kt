@@ -298,15 +298,8 @@ class WelcomeActivity : AppCompatActivity() {
                         Log.d("WelcomeActivity", "RecyclerView visibility: ${devicesRecyclerView.visibility}")
                         Log.d("WelcomeActivity", "RecyclerView adapter: ${devicesRecyclerView.adapter != null}")
                         
-                        // Toast adicional para mostrar quantos itens o adapter tem (com delay para garantir atualização)
+                        // Forçar layout após um pequeno delay para garantir que a view está visível
                         devicesRecyclerView.postDelayed({
-                            Toast.makeText(
-                                this@WelcomeActivity,
-                                "Adapter tem ${deviceAdapter.itemCount} item(ns)",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            
-                            // Forçar layout
                             devicesRecyclerView.requestLayout()
                             devicesRecyclerView.invalidate()
                         }, 200)
