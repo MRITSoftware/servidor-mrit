@@ -40,6 +40,7 @@ class WelcomeActivity : AppCompatActivity() {
     private lateinit var startServerButton: MaterialButton
     private lateinit var retrySearchButton: MaterialButton
     private lateinit var retrySearchButton2: MaterialButton
+    private lateinit var siteNameInput: com.google.android.material.textfield.TextInputEditText
     
     private lateinit var deviceAdapter: WelcomeDeviceAdapter
     private val devices = mutableListOf<WelcomeDevice>()
@@ -54,7 +55,7 @@ class WelcomeActivity : AppCompatActivity() {
         
         // Verificar se já configurou o nome do site
         if (isSiteConfigured()) {
-            startMainActivity()
+            startConnectedActivity()
             return
         }
         
@@ -81,6 +82,7 @@ class WelcomeActivity : AppCompatActivity() {
         startServerButton = findViewById(R.id.startServerButton)
         retrySearchButton = findViewById(R.id.retrySearchButton)
         retrySearchButton2 = findViewById(R.id.retrySearchButton2)
+        siteNameInput = findViewById(R.id.siteNameInput)
     }
     
     private fun setupRecyclerView() {
@@ -118,7 +120,6 @@ class WelcomeActivity : AppCompatActivity() {
         findViewById<View>(R.id.searchingCard).visibility = View.VISIBLE
         findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
         findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
-        findViewById<View>(R.id.connectedCard).visibility = View.GONE
         
         searchingText.text = "Buscando dispositivos..."
         searchingSubtext.text = "Escaneando a rede local"
@@ -195,30 +196,42 @@ class WelcomeActivity : AppCompatActivity() {
         findViewById<View>(R.id.searchingCard).visibility = View.GONE
         findViewById<View>(R.id.devicesFoundCard).visibility = View.VISIBLE
         findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
-        findViewById<View>(R.id.connectedCard).visibility = View.GONE
     }
     
     private fun showNoDevices() {
         findViewById<View>(R.id.searchingCard).visibility = View.GONE
         findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
         findViewById<View>(R.id.noDevicesCard).visibility = View.VISIBLE
-        findViewById<View>(R.id.connectedCard).visibility = View.GONE
-    }
-    
-    private fun showConnected() {
-        findViewById<View>(R.id.searchingCard).visibility = View.GONE
-        findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
-        findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
-        findViewById<View>(R.id.connectedCard).visibility = View.VISIBLE
     }
     
     private fun syncWithSupabase() {
+        // Validar nome da unidade
+        val siteName = siteNameInput.text?.toString()?.trim() ?: ""
+        if (siteName.isBlank()) {
+            Toast.makeText(this, "Por favor, informe o nome da unidade", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
         // Mostrar loading
         startServerButton.isEnabled = false
         startServerButton.text = "Sincronizando..."
         
         coroutineScope.launch {
             try {
+                // Atualizar nome do site no servidor Python
+                withContext(Dispatchers.IO) {
+                    try {
+                        if (!com.chaquo.python.Python.isStarted()) {
+                            com.chaquo.python.Python.start(com.chaquo.python.android.AndroidPlatform(this@WelcomeActivity))
+                        }
+                        val python = com.chaquo.python.Python.getInstance()
+                        val module = python.getModule("tuya_server")
+                        module.callAttr("update_site_name", siteName)
+                    } catch (e: Exception) {
+                        Log.e("WelcomeActivity", "Erro ao atualizar site name", e)
+                    }
+                }
+                
                 // Preparar dados para sincronização
                 val devicesData = JSONObject()
                 for (device in devices) {
@@ -240,11 +253,11 @@ class WelcomeActivity : AppCompatActivity() {
                     // Salvar que a configuração foi concluída
                     sharedPreferences.edit()
                         .putBoolean("welcome_completed", true)
-                        .putString("site_name", "ANDROID_DEVICE") // Nome padrão
+                        .putString("site_name", siteName)
                         .apply()
                     
-                    // Mostrar tela de conectado
-                    showConnected()
+                    // Ir para tela de conectado
+                    startConnectedActivity()
                 } else {
                     Toast.makeText(this@WelcomeActivity, "Erro ao sincronizar com o servidor", Toast.LENGTH_LONG).show()
                     startServerButton.isEnabled = true
@@ -302,6 +315,13 @@ class WelcomeActivity : AppCompatActivity() {
     
     private fun startMainActivity() {
         val intent = Intent(this, MainActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
+    }
+    
+    private fun startConnectedActivity() {
+        val intent = Intent(this, ConnectedActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()

@@ -73,6 +73,13 @@
             android:configChanges="orientation|screenSize"
             android:theme="@style/Theme.MRITServer" />
         
+        <activity
+            android:name=".ui.ConnectedActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize"
+            android:theme="@style/Theme.MRITServer" />
+        
         <service
             android:name=".service.PythonServerService"
             android:enabled="true"

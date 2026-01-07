@@ -11,6 +11,7 @@ import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import com.mritsoftware.mritserver.MainActivity
 import com.mritsoftware.mritserver.R
+import com.mritsoftware.mritserver.ui.ConnectedActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -72,7 +73,18 @@ class PythonServerService : Service() {
     }
     
     private fun createNotification(): Notification {
-        val intent = Intent(this, MainActivity::class.java)
+        // Verificar se já está configurado para abrir a tela correta
+        val prefs = getSharedPreferences("TuyaGateway", MODE_PRIVATE)
+        val isConfigured = prefs.getBoolean("welcome_completed", false) &&
+                          prefs.getString("site_name", null) != null
+        
+        val intent = if (isConfigured) {
+            Intent(this, ConnectedActivity::class.java)
+        } else {
+            Intent(this, MainActivity::class.java)
+        }
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        
         val pendingIntent = PendingIntent.getActivity(
             this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

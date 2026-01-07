@@ -33,11 +33,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
-                app:cardBackgroundColor="#30FFFFFF"
-                app:strokeWidth="1dp"
-                app:strokeColor="#50FFFFFF"
+                app:cardBackgroundColor="#25FFFFFF"
+                app:strokeWidth="1.5dp"
+                app:strokeColor="#60FFFFFF"
                 android:visibility="visible">
 
                 <LinearLayout
@@ -80,11 +80,11 @@
                 android:id="@+id/devicesFoundCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
-                app:cardBackgroundColor="#30FFFFFF"
-                app:strokeWidth="1dp"
-                app:strokeColor="#50FFFFFF"
+                app:cardBackgroundColor="#25FFFFFF"
+                app:strokeWidth="1.5dp"
+                app:strokeColor="#60FFFFFF"
                 android:visibility="gone">
 
                 <LinearLayout
@@ -92,16 +92,16 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="24dp">
+                    android:padding="28dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Dispositivos Encontrados"
-                        android:textSize="28sp"
+                        android:textSize="26sp"
                         android:textStyle="bold"
                         android:textColor="@android:color/white"
-                        android:layout_marginBottom="20dp" />
+                        android:layout_marginBottom="24dp" />
 
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/devicesRecyclerView"
@@ -111,10 +111,32 @@
                         android:layout_marginBottom="24dp"
                         tools:listitem="@layout/item_device_welcome" />
 
+                    <!-- Campo de Nome da Unidade -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/siteNameInputLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Nome da Unidade"
+                        android:layout_marginBottom="20dp"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        app:boxStrokeColor="#80FFFFFF"
+                        app:hintTextColor="#E0FFFFFF"
+                        app:boxBackgroundColor="#20FFFFFF">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/siteNameInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@android:color/white"
+                            android:textColorHint="#B0FFFFFF"
+                            android:inputType="text"
+                            android:textSize="16sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/startServerButton"
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
+                        android:layout_height="58dp"
                         android:text="Ligar Servidor"
                         android:textSize="18sp"
                         android:textStyle="bold"
@@ -141,11 +163,11 @@
                 android:id="@+id/noDevicesCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="24dp"
+                app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
-                app:cardBackgroundColor="#30FFFFFF"
-                app:strokeWidth="1dp"
-                app:strokeColor="#50FFFFFF"
+                app:cardBackgroundColor="#25FFFFFF"
+                app:strokeWidth="1.5dp"
+                app:strokeColor="#60FFFFFF"
                 android:visibility="gone">
 
                 <LinearLayout
@@ -195,74 +217,6 @@
 
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
-
-        <!-- Tela de Conectado/Sucesso - Sobreposta -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/connectedCard"
-            android:layout_width="320dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_margin="32dp"
-            app:cardCornerRadius="32dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="#40FFFFFF"
-            app:strokeWidth="1dp"
-            app:strokeColor="#80FFFFFF"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="48dp">
-
-                <!-- Success Circle -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
-                    android:layout_marginBottom="32dp"
-                    app:cardCornerRadius="60dp"
-                    app:cardElevation="0dp"
-                    app:cardBackgroundColor="#404CAF50"
-                    app:strokeWidth="2dp"
-                    app:strokeColor="#4CAF50">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="✓"
-                            android:textSize="64sp"
-                            android:textColor="#4CAF50"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Status Text -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Conectado"
-                    android:textSize="32sp"
-                    android:textStyle="bold"
-                    android:textColor="@android:color/white"
-                    android:layout_marginBottom="16dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Servidor sincronizado e pronto para uso"
-                    android:textSize="16sp"
-                    android:textColor="#E0FFFFFF"
-                    android:gravity="center" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
     </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
