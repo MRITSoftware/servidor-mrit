@@ -269,6 +269,13 @@ class WelcomeActivity : AppCompatActivity() {
                         Log.d("WelcomeActivity", "Preparando para exibir ${devices.size} dispositivos")
                         Log.d("WelcomeActivity", "Dispositivos: ${devices.map { "${it.id} - ${it.ip}" }}")
                         
+                        // Toast para debug - mostrar quantos dispositivos foram encontrados
+                        Toast.makeText(
+                            this@WelcomeActivity,
+                            "Encontrados ${devices.size} dispositivo(s)",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        
                         // Garantir que o adapter está configurado no RecyclerView
                         if (devicesRecyclerView.adapter == null) {
                             devicesRecyclerView.adapter = deviceAdapter
@@ -285,6 +292,13 @@ class WelcomeActivity : AppCompatActivity() {
                         Log.d("WelcomeActivity", "RecyclerView visibility: ${devicesRecyclerView.visibility}")
                         Log.d("WelcomeActivity", "RecyclerView adapter: ${devicesRecyclerView.adapter != null}")
                         
+                        // Toast adicional para mostrar quantos itens o adapter tem
+                        Toast.makeText(
+                            this@WelcomeActivity,
+                            "Adapter tem ${deviceAdapter.itemCount} item(ns)",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        
                         // Forçar layout após um pequeno delay para garantir que a view está visível
                         devicesRecyclerView.postDelayed({
                             devicesRecyclerView.requestLayout()
@@ -296,6 +310,11 @@ class WelcomeActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         showNoDevices()
                         Log.d("WelcomeActivity", "Nenhum dispositivo encontrado")
+                        Toast.makeText(
+                            this@WelcomeActivity,
+                            "Nenhum dispositivo encontrado na rede",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
             } catch (e: Exception) {
@@ -319,8 +338,13 @@ class WelcomeActivity : AppCompatActivity() {
         if (devicesRecyclerView.adapter == null) {
             devicesRecyclerView.adapter = deviceAdapter
         }
-        // Forçar atualização do adapter
+        
+        // Forçar atualização do adapter e layout
         deviceAdapter.notifyDataSetChanged()
+        devicesRecyclerView.requestLayout()
+        devicesRecyclerView.invalidate()
+        
+        Log.d("WelcomeActivity", "showDevicesFound() chamado - RecyclerView visível, adapter tem ${deviceAdapter.itemCount} itens")
     }
     
     private fun showDeviceNameInput() {
