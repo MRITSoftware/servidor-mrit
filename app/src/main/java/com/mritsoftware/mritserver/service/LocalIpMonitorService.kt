@@ -1,8 +1,6 @@
 package com.mritsoftware.mritserver.service
 
 import android.content.Context
-import android.content.SharedPreferences
-import android.net.wifi.WifiManager
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -10,7 +8,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.URL
 import java.net.HttpURLConnection
@@ -25,13 +22,17 @@ class LocalIpMonitorService(private val context: Context) {
     private val PREFS_NAME = "TuyaGateway"
     private val KEY_LOCAL_IP = "local_ip"
     private val CHECK_INTERVAL = 60000L // 1 minuto
-    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+    private var job: Job? = null
+    private var coroutineScope: CoroutineScope? = null
     private var monitoringJob: Job? = null
     
     fun startMonitoring() {
         stopMonitoring()
         
-        monitoringJob = coroutineScope.launch {
+        job = Job()
+        coroutineScope = CoroutineScope(Dispatchers.IO + job!!)
+        
+        monitoringJob = coroutineScope!!.launch {
             while (isActive) {
                 try {
                     checkAndUpdateLocalIp()
@@ -49,6 +50,9 @@ class LocalIpMonitorService(private val context: Context) {
     fun stopMonitoring() {
         monitoringJob?.cancel()
         monitoringJob = null
+        job?.cancel()
+        job = null
+        coroutineScope = null
         Log.d(TAG, "Monitoramento de IP local parado")
     }
     
