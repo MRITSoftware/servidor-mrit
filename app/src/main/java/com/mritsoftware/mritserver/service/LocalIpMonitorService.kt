@@ -29,10 +29,12 @@ class LocalIpMonitorService(private val context: Context) {
     fun startMonitoring() {
         stopMonitoring()
         
-        job = Job()
-        coroutineScope = CoroutineScope(Dispatchers.IO + job!!)
+        val newJob = Job()
+        job = newJob
+        val scope = CoroutineScope(Dispatchers.IO + newJob)
+        coroutineScope = scope
         
-        monitoringJob = coroutineScope!!.launch {
+        monitoringJob = scope.launch {
             while (isActive) {
                 try {
                     checkAndUpdateLocalIp()
