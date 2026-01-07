@@ -116,96 +116,133 @@ class ConnectedActivity : AppCompatActivity() {
         
         coroutineScope.launch {
             try {
-                // Usar endpoint HTTP do servidor (mais confiável)
-                val scanResult = withContext(Dispatchers.IO) {
+                // Primeiro verificar se o servidor está rodando
+                val serverRunning = withContext(Dispatchers.IO) {
                     try {
-                        val url = URL("http://127.0.0.1:8000/tuya/devices")
-                        val connection = url.openConnection() as HttpURLConnection
-                        connection.requestMethod = "GET"
-                        connection.connectTimeout = 35000  // 35 segundos para dar tempo do scan
-                        connection.readTimeout = 35000
-                        
-                        val responseCode = connection.responseCode
-                        if (responseCode == 200) {
-                            val reader = java.io.BufferedReader(java.io.InputStreamReader(connection.inputStream))
-                            val response = reader.readText()
-                            reader.close()
+                        val healthUrl = URL("http://127.0.0.1:8000/health")
+                        val healthConnection = healthUrl.openConnection() as HttpURLConnection
+                        healthConnection.requestMethod = "GET"
+                        healthConnection.connectTimeout = 3000
+                        healthConnection.readTimeout = 3000
+                        val healthCode = healthConnection.responseCode
+                        healthConnection.disconnect()
+                        healthCode == 200
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
+                
+                if (!serverRunning) {
+                    android.util.Log.w("ConnectedActivity", "Servidor não está rodando, tentando usar Python diretamente")
+                    // Fallback: usar Python diretamente
+                    val scanResult = withContext(Dispatchers.IO) {
+                        try {
+                            // Inicializar Python se necessário
+                            if (!com.chaquo.python.Python.isStarted()) {
+                                com.chaquo.python.Python.start(com.chaquo.python.android.AndroidPlatform(this@ConnectedActivity))
+                            }
                             
-                            val json = org.json.JSONObject(response)
-                            if (json.getBoolean("ok")) {
-                                val devicesArray = json.getJSONArray("devices")
+                            val python = com.chaquo.python.Python.getInstance()
+                            val module = python.getModule("tuya_server")
+                            
+                            android.util.Log.d("ConnectedActivity", "Chamando scan_devices via Python...")
+                            val result = module.callAttr("scan_devices")
+                            
+                            if (result != null) {
                                 val devicesMap = mutableMapOf<String, Map<String, String>>()
+                                val pyDict = result.asMap()
                                 
-                                for (i in 0 until devicesArray.length()) {
-                                    val deviceObj = devicesArray.getJSONObject(i)
-                                    val deviceId = deviceObj.getString("id")
-                                    devicesMap[deviceId] = mapOf(
-                                        "id" to deviceId,
-                                        "ip" to deviceObj.optString("ip", ""),
-                                        "version" to deviceObj.optString("version", "")
-                                    )
+                                for ((key, value) in pyDict) {
+                                    val deviceId = key.toString()
+                                    val deviceInfo = value?.asMap() ?: emptyMap()
+                                    
+                                    val deviceMap = mutableMapOf<String, String>()
+                                    for ((infoKey, infoValue) in deviceInfo) {
+                                        deviceMap[infoKey.toString()] = infoValue?.toString() ?: ""
+                                    }
+                                    devicesMap[deviceId] = deviceMap
                                 }
+                                android.util.Log.d("ConnectedActivity", "Python retornou ${devicesMap.size} dispositivos")
                                 devicesMap
                             } else {
+                                android.util.Log.w("ConnectedActivity", "Python retornou null")
                                 null
                             }
-                        } else {
-                            android.util.Log.e("ConnectedActivity", "Erro HTTP ao buscar dispositivos: $responseCode")
+                        } catch (e: Exception) {
+                            android.util.Log.e("ConnectedActivity", "Erro ao escanear via Python", e)
+                            e.printStackTrace()
                             null
                         }
-                    } catch (e: Exception) {
-                        android.util.Log.e("ConnectedActivity", "Erro ao buscar dispositivos via HTTP", e)
-                        e.printStackTrace()
-                        null
-                    }
-                }
-                
-                devices.clear()
-                
-                if (scanResult != null && scanResult.isNotEmpty()) {
-                    android.util.Log.d("ConnectedActivity", "Encontrados ${scanResult.size} dispositivos")
-                    
-                    for ((deviceId, deviceInfo) in scanResult) {
-                        val ip = deviceInfo["ip"] ?: ""
-                        val version = deviceInfo["version"] ?: ""
-                        
-                        devices.add(
-                            WelcomeDevice(
-                                id = deviceId,
-                                ip = ip,
-                                protocolVersion = version
-                            )
-                        )
                     }
                     
-                    // Atualizar UI no thread principal
-                    runOnUiThread {
-                        adapter.updateDevices(devices)
-                        progressBar.visibility = View.GONE
-                        recyclerView.visibility = View.VISIBLE
-                        emptyText.visibility = View.GONE
-                        
-                        android.widget.Toast.makeText(
-                            this@ConnectedActivity,
-                            "${devices.size} dispositivo(s) encontrado(s)",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    processScanResult(scanResult, devices, adapter, progressBar, emptyText, recyclerView)
                 } else {
-                    android.util.Log.d("ConnectedActivity", "Nenhum dispositivo encontrado")
-                    runOnUiThread {
-                        progressBar.visibility = View.GONE
-                        recyclerView.visibility = View.GONE
-                        emptyText.visibility = View.VISIBLE
-                        android.widget.Toast.makeText(
-                            this@ConnectedActivity,
-                            "Nenhum dispositivo encontrado na rede",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                    // Usar endpoint HTTP do servidor
+                    android.util.Log.d("ConnectedActivity", "Servidor está rodando, usando endpoint HTTP")
+                    val scanResult = withContext(Dispatchers.IO) {
+                        try {
+                            val url = URL("http://127.0.0.1:8000/tuya/devices")
+                            val connection = url.openConnection() as HttpURLConnection
+                            connection.requestMethod = "GET"
+                            connection.connectTimeout = 40000  // 40 segundos para dar tempo do scan
+                            connection.readTimeout = 40000
+                            
+                            android.util.Log.d("ConnectedActivity", "Fazendo requisição HTTP...")
+                            val responseCode = connection.responseCode
+                            android.util.Log.d("ConnectedActivity", "Response code: $responseCode")
+                            
+                            if (responseCode == 200) {
+                                val reader = java.io.BufferedReader(java.io.InputStreamReader(connection.inputStream))
+                                val response = reader.readText()
+                                reader.close()
+                                connection.disconnect()
+                                
+                                android.util.Log.d("ConnectedActivity", "Response: $response")
+                                val json = org.json.JSONObject(response)
+                                
+                                if (json.getBoolean("ok")) {
+                                    val devicesArray = json.getJSONArray("devices")
+                                    android.util.Log.d("ConnectedActivity", "Encontrados ${devicesArray.length()} dispositivos no JSON")
+                                    
+                                    val devicesMap = mutableMapOf<String, Map<String, String>>()
+                                    
+                                    for (i in 0 until devicesArray.length()) {
+                                        val deviceObj = devicesArray.getJSONObject(i)
+                                        val deviceId = deviceObj.getString("id")
+                                        devicesMap[deviceId] = mapOf(
+                                            "id" to deviceId,
+                                            "ip" to deviceObj.optString("ip", ""),
+                                            "version" to deviceObj.optString("version", "")
+                                        )
+                                    }
+                                    devicesMap
+                                } else {
+                                    android.util.Log.w("ConnectedActivity", "JSON retornou ok=false")
+                                    null
+                                }
+                            } else {
+                                android.util.Log.e("ConnectedActivity", "Erro HTTP ao buscar dispositivos: $responseCode")
+                                val errorStream = connection.errorStream
+                                if (errorStream != null) {
+                                    val errorReader = java.io.BufferedReader(java.io.InputStreamReader(errorStream))
+                                    val errorResponse = errorReader.readText()
+                                    errorReader.close()
+                                    android.util.Log.e("ConnectedActivity", "Error response: $errorResponse")
+                                }
+                                connection.disconnect()
+                                null
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("ConnectedActivity", "Erro ao buscar dispositivos via HTTP", e)
+                            e.printStackTrace()
+                            null
+                        }
                     }
+                    
+                    processScanResult(scanResult, devices, adapter, progressBar, emptyText, recyclerView)
                 }
             } catch (e: Exception) {
-                android.util.Log.e("ConnectedActivity", "Erro ao buscar dispositivos", e)
+                android.util.Log.e("ConnectedActivity", "Erro geral ao buscar dispositivos", e)
                 e.printStackTrace()
                 runOnUiThread {
                     progressBar.visibility = View.GONE
@@ -217,6 +254,60 @@ class ConnectedActivity : AppCompatActivity() {
                         android.widget.Toast.LENGTH_LONG
                     ).show()
                 }
+            }
+        }
+    }
+    
+    private fun processScanResult(
+        scanResult: Map<String, Map<String, String>>?,
+        devices: MutableList<WelcomeDevice>,
+        adapter: WelcomeDeviceAdapter,
+        progressBar: View,
+        emptyText: TextView,
+        recyclerView: androidx.recyclerview.widget.RecyclerView
+    ) {
+        devices.clear()
+        
+        if (scanResult != null && scanResult.isNotEmpty()) {
+            android.util.Log.d("ConnectedActivity", "Processando ${scanResult.size} dispositivos")
+            
+            for ((deviceId, deviceInfo) in scanResult) {
+                val ip = deviceInfo["ip"] ?: ""
+                val version = deviceInfo["version"] ?: ""
+                
+                devices.add(
+                    WelcomeDevice(
+                        id = deviceId,
+                        ip = ip,
+                        protocolVersion = version
+                    )
+                )
+            }
+            
+            // Atualizar UI no thread principal
+            runOnUiThread {
+                adapter.updateDevices(devices)
+                progressBar.visibility = View.GONE
+                recyclerView.visibility = View.VISIBLE
+                emptyText.visibility = View.GONE
+                
+                android.widget.Toast.makeText(
+                    this@ConnectedActivity,
+                    "${devices.size} dispositivo(s) encontrado(s)",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+        } else {
+            android.util.Log.d("ConnectedActivity", "Nenhum dispositivo encontrado")
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                recyclerView.visibility = View.GONE
+                emptyText.visibility = View.VISIBLE
+                android.widget.Toast.makeText(
+                    this@ConnectedActivity,
+                    "Nenhum dispositivo encontrado na rede. Verifique se os dispositivos estão conectados.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
