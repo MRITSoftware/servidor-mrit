@@ -881,7 +881,7 @@ def api_sync_devices():
             
             # Buscar dados opcionais do body (name e local_key)
             device_extra_data = devices_data.get(tuya_id, {})
-            name_from_body = device_extra_data.get("name")
+            name_from_body = device_extra_data.get("name") or site_id_from_body  # Usar site_id se name não fornecido
             local_key_from_body = device_extra_data.get("local_key")
             
             # Se não temos local_key do body, tentar buscar da API Tuya
@@ -917,10 +917,11 @@ def api_sync_devices():
                     update_data['site_id'] = site_id_from_body
                     update_needed = True
                 
-                # Atualizar name se fornecido no body
-                if name_from_body and name_from_body != db_info.get('name'):
-                    update_data['name'] = name_from_body
-                    update_needed = True
+                # Sempre atualizar name com site_id se fornecido
+                if site_id_from_body:
+                    if name_from_body != db_info.get('name'):
+                        update_data['name'] = name_from_body
+                        update_needed = True
                 
                 # Atualizar local_key se fornecido no body
                 if local_key_from_body and local_key_from_body != db_info.get('local_key'):
@@ -954,7 +955,7 @@ def api_sync_devices():
                 success = create_device_in_db(
                     tuya_device_id=tuya_id,
                     site_id=site_id_from_body,
-                    name=name_from_body,
+                    name=name_from_body or site_id_from_body,  # Garantir que name seja preenchido
                     local_key=local_key_from_body,
                     lan_ip=lan_ip,
                     protocol_version=protocol_version

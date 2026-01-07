@@ -86,17 +86,6 @@
                 android:textSize="34sp"
                 android:textStyle="bold"
                 android:textColor="@android:color/white"
-                android:layout_marginBottom="32dp" />
-
-            <!-- Site Name -->
-            <TextView
-                android:id="@+id/siteNameText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="18sp"
-                android:textColor="#B0FFFFFF"
-                android:gravity="center"
-                android:textStyle="italic"
                 android:layout_marginBottom="40dp" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>

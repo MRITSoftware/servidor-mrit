@@ -28,7 +28,6 @@ class ConnectedActivity : AppCompatActivity() {
     
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var statusCircle: View
-    private lateinit var siteNameText: TextView
     private lateinit var changeDeviceButton: com.google.android.material.button.MaterialButton
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
     
@@ -53,12 +52,7 @@ class ConnectedActivity : AppCompatActivity() {
     
     private fun setupViews() {
         statusCircle = findViewById(R.id.statusCircle)
-        siteNameText = findViewById(R.id.siteNameText)
         changeDeviceButton = findViewById(R.id.changeDeviceButton)
-        
-        // Exibir nome do site
-        val siteName = sharedPreferences.getString("site_name", "Unidade")
-        siteNameText.text = siteName
         
         // Configurar botão de trocar dispositivo
         changeDeviceButton.setOnClickListener {
@@ -167,20 +161,27 @@ class ConnectedActivity : AppCompatActivity() {
                         )
                     }
                     
-                    adapter.updateDevices(devices)
-                    progressBar.visibility = View.GONE
-                    recyclerView.visibility = View.VISIBLE
-                    emptyText.visibility = View.GONE
+                    // Atualizar UI no thread principal
+                    runOnUiThread {
+                        adapter.updateDevices(devices)
+                        progressBar.visibility = View.GONE
+                        recyclerView.visibility = View.VISIBLE
+                        emptyText.visibility = View.GONE
+                    }
                 } else {
+                    runOnUiThread {
+                        progressBar.visibility = View.GONE
+                        recyclerView.visibility = View.GONE
+                        emptyText.visibility = View.VISIBLE
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ConnectedActivity", "Erro ao buscar dispositivos", e)
+                runOnUiThread {
                     progressBar.visibility = View.GONE
                     recyclerView.visibility = View.GONE
                     emptyText.visibility = View.VISIBLE
                 }
-            } catch (e: Exception) {
-                android.util.Log.e("ConnectedActivity", "Erro ao buscar dispositivos", e)
-                progressBar.visibility = View.GONE
-                recyclerView.visibility = View.GONE
-                emptyText.visibility = View.VISIBLE
             }
         }
         
