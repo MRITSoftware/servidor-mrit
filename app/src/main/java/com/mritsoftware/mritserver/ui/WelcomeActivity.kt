@@ -267,9 +267,11 @@ class WelcomeActivity : AppCompatActivity() {
                 // Preparar dados para sincronização apenas com o dispositivo selecionado
                 val selectedDeviceId = selectedDevice?.id
                 if (selectedDeviceId == null) {
-                    Toast.makeText(this, "Nenhum dispositivo selecionado", Toast.LENGTH_SHORT).show()
-                    startServerButton.isEnabled = true
-                    startServerButton.text = "Ligar Servidor"
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@WelcomeActivity, "Nenhum dispositivo selecionado", Toast.LENGTH_SHORT).show()
+                        startServerButton.isEnabled = true
+                        startServerButton.text = "Ligar Servidor"
+                    }
                     return@launch
                 }
                 
