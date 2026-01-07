@@ -263,9 +263,23 @@ class WelcomeActivity : AppCompatActivity() {
                     
                     // Atualizar UI na thread principal
                     withContext(Dispatchers.Main) {
+                        Log.d("WelcomeActivity", "Preparando para exibir ${devices.size} dispositivos")
+                        Log.d("WelcomeActivity", "Dispositivos: ${devices.map { "${it.id} - ${it.ip}" }}")
+                        
+                        // Atualizar adapter ANTES de mostrar a tela
                         deviceAdapter.updateDevices(devices)
+                        
+                        // Forçar atualização do RecyclerView
+                        devicesRecyclerView.visibility = View.VISIBLE
+                        devicesRecyclerView.invalidate()
+                        
+                        // Mostrar tela
                         showDevicesFound()
-                        Log.d("WelcomeActivity", "Dispositivos encontrados: ${devices.size}")
+                        
+                        // Verificar se o adapter tem itens
+                        Log.d("WelcomeActivity", "Adapter itemCount: ${deviceAdapter.itemCount}")
+                        Log.d("WelcomeActivity", "RecyclerView visibility: ${devicesRecyclerView.visibility}")
+                        Log.d("WelcomeActivity", "RecyclerView adapter: ${devicesRecyclerView.adapter != null}")
                     }
                 } else {
                     // Nenhum dispositivo encontrado
@@ -289,6 +303,13 @@ class WelcomeActivity : AppCompatActivity() {
         findViewById<View>(R.id.devicesFoundCard).visibility = View.VISIBLE
         findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
         findViewById<View>(R.id.deviceNameInputCard).visibility = View.GONE
+        
+        // Garantir que o RecyclerView está visível e configurado
+        devicesRecyclerView.visibility = View.VISIBLE
+        if (devicesRecyclerView.adapter == null) {
+            devicesRecyclerView.adapter = deviceAdapter
+        }
+        deviceAdapter.notifyDataSetChanged()
     }
     
     private fun showDeviceNameInput() {
