@@ -28,6 +28,7 @@ class PythonServerService : Service() {
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
     private var healthCheckJob: Job? = null
     private val HEALTH_CHECK_INTERVAL = 60000L // 1 minuto
+    private var localIpMonitor: LocalIpMonitorService? = null
     
     override fun onCreate() {
         super.onCreate()
@@ -53,6 +54,7 @@ class PythonServerService : Service() {
         startForeground(NOTIFICATION_ID, createNotification())
         startPythonServer()
         startHealthCheck()
+        startLocalIpMonitoring()
         return START_STICKY // Serviço será reiniciado se for morto
     }
     
@@ -198,11 +200,21 @@ class PythonServerService : Service() {
         }
     }
     
+    private fun startLocalIpMonitoring() {
+        localIpMonitor = LocalIpMonitorService(this)
+        localIpMonitor?.startMonitoring()
+        Log.d(TAG, "Monitoramento de IP local iniciado")
+    }
+    
     override fun onDestroy() {
         super.onDestroy()
         // Parar health check
         healthCheckJob?.cancel()
         healthCheckJob = null
+        
+        // Parar monitoramento de IP
+        localIpMonitor?.stopMonitoring()
+        localIpMonitor = null
         
         // Parar thread do servidor
         stopServer()

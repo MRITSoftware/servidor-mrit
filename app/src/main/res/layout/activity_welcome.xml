@@ -33,11 +33,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                app:cardCornerRadius="28dp"
+                app:cardCornerRadius="32dp"
                 app:cardElevation="0dp"
-                app:cardBackgroundColor="#25FFFFFF"
-                app:strokeWidth="1.5dp"
-                app:strokeColor="#60FFFFFF"
+                app:cardBackgroundColor="#20FFFFFF"
+                app:strokeWidth="2dp"
+                app:strokeColor="#70FFFFFF"
                 android:visibility="visible">
 
                 <LinearLayout
@@ -46,32 +46,51 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="48dp">
+                    android:padding="64dp">
 
-                    <ProgressBar
-                        android:id="@+id/searchProgressBar"
-                        android:layout_width="80dp"
-                        android:layout_height="80dp"
-                        android:layout_marginBottom="24dp"
-                        android:indeterminateTint="#9C27B0" />
+                    <!-- Animated Circle -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="120dp"
+                        android:layout_height="120dp"
+                        android:layout_marginBottom="32dp"
+                        app:cardCornerRadius="60dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="#30FFFFFF"
+                        app:strokeWidth="2dp"
+                        app:strokeColor="#9C27B0">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <ProgressBar
+                                android:id="@+id/searchProgressBar"
+                                android:layout_width="60dp"
+                                android:layout_height="60dp"
+                                android:indeterminateTint="#9C27B0" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
 
                     <TextView
                         android:id="@+id/searchingText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Buscando dispositivos..."
-                        android:textSize="26sp"
+                        android:textSize="28sp"
                         android:textStyle="bold"
                         android:textColor="@android:color/white"
-                        android:layout_marginBottom="12dp" />
+                        android:layout_marginBottom="16dp" />
 
                     <TextView
                         android:id="@+id/searchingSubtext"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Escaneando a rede local"
-                        android:textSize="16sp"
-                        android:textColor="#B0FFFFFF" />
+                        android:textSize="18sp"
+                        android:textColor="#C0FFFFFF"
+                        android:gravity="center" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -107,9 +126,59 @@
                         android:id="@+id/devicesRecyclerView"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:nestedScrollingEnabled="false"
+                        android:maxHeight="400dp"
+                        android:nestedScrollingEnabled="true"
                         android:layout_marginBottom="24dp"
                         tools:listitem="@layout/item_device_welcome" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/retrySearchButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="Buscar Novamente"
+                        android:textSize="16sp"
+                        android:textColor="#FF9800"
+                        android:backgroundTint="#00FFFFFF"
+                        app:strokeColor="#FF9800"
+                        app:strokeWidth="2dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Tela de Input Nome da Unidade -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/deviceNameInputCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="#25FFFFFF"
+                app:strokeWidth="1.5dp"
+                app:strokeColor="#60FFFFFF"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="28dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Configurar Unidade"
+                        android:textSize="26sp"
+                        android:textStyle="bold"
+                        android:textColor="@android:color/white"
+                        android:layout_marginBottom="16dp" />
+
+                    <TextView
+                        android:id="@+id/selectedDeviceInfo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:textColor="#B0FFFFFF"
+                        android:layout_marginBottom="24dp" />
 
                     <!-- Campo de Nome da Unidade -->
                     <com.google.android.material.textfield.TextInputLayout
@@ -145,10 +214,10 @@
                         style="@style/Widget.MaterialComponents.Button" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/retrySearchButton"
+                        android:id="@+id/backToDevicesButton"
                         android:layout_width="match_parent"
                         android:layout_height="56dp"
-                        android:text="Buscar Novamente"
+                        android:text="Voltar"
                         android:textSize="16sp"
                         android:textColor="#FF9800"
                         android:backgroundTint="#00FFFFFF"

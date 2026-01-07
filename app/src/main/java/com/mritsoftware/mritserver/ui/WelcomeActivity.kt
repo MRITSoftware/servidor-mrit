@@ -41,12 +41,15 @@ class WelcomeActivity : AppCompatActivity() {
     private lateinit var retrySearchButton: MaterialButton
     private lateinit var retrySearchButton2: MaterialButton
     private lateinit var siteNameInput: com.google.android.material.textfield.TextInputEditText
+    private lateinit var selectedDeviceInfo: TextView
+    private lateinit var backToDevicesButton: MaterialButton
     
     private lateinit var deviceAdapter: WelcomeDeviceAdapter
     private val devices = mutableListOf<WelcomeDevice>()
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
     
     private var isServerStarted = false
+    private var selectedDevice: WelcomeDevice? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,10 +86,16 @@ class WelcomeActivity : AppCompatActivity() {
         retrySearchButton = findViewById(R.id.retrySearchButton)
         retrySearchButton2 = findViewById(R.id.retrySearchButton2)
         siteNameInput = findViewById(R.id.siteNameInput)
+        selectedDeviceInfo = findViewById(R.id.selectedDeviceInfo)
+        backToDevicesButton = findViewById(R.id.backToDevicesButton)
     }
     
     private fun setupRecyclerView() {
         deviceAdapter = WelcomeDeviceAdapter(devices)
+        deviceAdapter.setOnDeviceClickListener { device ->
+            selectedDevice = device
+            showDeviceNameInput()
+        }
         devicesRecyclerView.layoutManager = LinearLayoutManager(this)
         devicesRecyclerView.adapter = deviceAdapter
     }
@@ -102,6 +111,10 @@ class WelcomeActivity : AppCompatActivity() {
         
         retrySearchButton2.setOnClickListener {
             searchDevices()
+        }
+        
+        backToDevicesButton.setOnClickListener {
+            showDevicesFound()
         }
     }
     
@@ -196,12 +209,30 @@ class WelcomeActivity : AppCompatActivity() {
         findViewById<View>(R.id.searchingCard).visibility = View.GONE
         findViewById<View>(R.id.devicesFoundCard).visibility = View.VISIBLE
         findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
+        findViewById<View>(R.id.deviceNameInputCard).visibility = View.GONE
+    }
+    
+    private fun showDeviceNameInput() {
+        selectedDevice?.let { device ->
+            val deviceIdSuffix = if (device.id.length >= 5) {
+                device.id.takeLast(5)
+            } else {
+                device.id
+            }
+            selectedDeviceInfo.text = "Dispositivo selecionado: $deviceIdSuffix\nIP: ${device.ip}"
+        }
+        
+        findViewById<View>(R.id.searchingCard).visibility = View.GONE
+        findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
+        findViewById<View>(R.id.noDevicesCard).visibility = View.GONE
+        findViewById<View>(R.id.deviceNameInputCard).visibility = View.VISIBLE
     }
     
     private fun showNoDevices() {
         findViewById<View>(R.id.searchingCard).visibility = View.GONE
         findViewById<View>(R.id.devicesFoundCard).visibility = View.GONE
         findViewById<View>(R.id.noDevicesCard).visibility = View.VISIBLE
+        findViewById<View>(R.id.deviceNameInputCard).visibility = View.GONE
     }
     
     private fun syncWithSupabase() {
@@ -232,10 +263,17 @@ class WelcomeActivity : AppCompatActivity() {
                     }
                 }
                 
-                // Preparar dados para sincronização
-                val devicesData = JSONObject()
-                for (device in devices) {
-                    devicesData.put(device.id, JSONObject().apply {
+                // Preparar dados para sincronização apenas com o dispositivo selecionado
+                val selectedDeviceId = selectedDevice?.id
+                if (selectedDeviceId == null) {
+                    Toast.makeText(this, "Nenhum dispositivo selecionado", Toast.LENGTH_SHORT).show()
+                    startServerButton.isEnabled = true
+                    startServerButton.text = "Ligar Servidor"
+                    return@launch
+                }
+                
+                val devicesData = JSONObject().apply {
+                    put(selectedDeviceId, JSONObject().apply {
                         put("name", siteName) // Nome da unidade como name do device
                     })
                 }
