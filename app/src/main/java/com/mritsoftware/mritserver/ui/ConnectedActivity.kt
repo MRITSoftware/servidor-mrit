@@ -81,9 +81,12 @@ class ConnectedActivity : AppCompatActivity() {
         val scanButton = dialogView.findViewById<com.google.android.material.button.MaterialButton>(R.id.scanButton)
         
         val devices = mutableListOf<WelcomeDevice>()
-        val adapter = WelcomeDeviceAdapter(devices)
+        // Criar adapter com lista vazia inicial - ele terá sua própria cópia
+        val adapter = WelcomeDeviceAdapter(mutableListOf())
         recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         recyclerView.adapter = adapter
+        // Desabilitar nested scrolling se necessário
+        recyclerView.isNestedScrollingEnabled = false
         
         // Configurar clique no dispositivo ANTES de buscar
         adapter.setOnDeviceClickListener { device ->
@@ -267,7 +270,8 @@ class ConnectedActivity : AppCompatActivity() {
         emptyText: TextView,
         recyclerView: androidx.recyclerview.widget.RecyclerView
     ) {
-        devices.clear()
+        // Criar uma nova lista para evitar problemas de referência
+        val newDevicesList = mutableListOf<WelcomeDevice>()
         
         if (scanResult != null && scanResult.isNotEmpty()) {
             android.util.Log.d("ConnectedActivity", "Processando ${scanResult.size} dispositivos")
@@ -276,7 +280,7 @@ class ConnectedActivity : AppCompatActivity() {
                 val ip = deviceInfo["ip"] ?: ""
                 val version = deviceInfo["version"] ?: ""
                 
-                devices.add(
+                newDevicesList.add(
                     WelcomeDevice(
                         id = deviceId,
                         ip = ip,
@@ -287,10 +291,20 @@ class ConnectedActivity : AppCompatActivity() {
             
             // Atualizar UI no thread principal
             runOnUiThread {
-                adapter.updateDevices(devices)
+                // Atualizar a lista devices ANTES de atualizar o adapter
+                devices.clear()
+                devices.addAll(newDevicesList)
+                
+                // Atualizar adapter com uma CÓPIA da lista para evitar problemas de referência
+                adapter.updateDevices(devices.toList())
+                
                 progressBar.visibility = View.GONE
                 recyclerView.visibility = View.VISIBLE
                 emptyText.visibility = View.GONE
+                
+                // Forçar layout
+                recyclerView.requestLayout()
+                recyclerView.invalidate()
                 
                 android.widget.Toast.makeText(
                     this@ConnectedActivity,

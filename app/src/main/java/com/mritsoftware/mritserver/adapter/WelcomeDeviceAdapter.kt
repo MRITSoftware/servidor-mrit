@@ -39,7 +39,7 @@ class WelcomeDeviceAdapter(
     override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
         val device = devices[position]
         
-        // Mostrar últimos 5 caracteres do device ID de forma destacada
+        // Mostrar apenas os últimos 5 caracteres do device ID
         val deviceIdSuffix = if (device.id.length >= 5) {
             device.id.takeLast(5)
         } else {
@@ -47,7 +47,8 @@ class WelcomeDeviceAdapter(
         }
         
         holder.deviceName.text = "Dispositivo: $deviceIdSuffix"
-        holder.deviceId.text = "ID: ${device.id}"
+        // Mostrar apenas os últimos 5 caracteres no campo ID também
+        holder.deviceId.text = "ID: $deviceIdSuffix"
         holder.deviceIp.text = "IP: ${device.ip}"
         holder.deviceProtocol.text = "Protocolo: ${device.protocolVersion ?: "N/A"}"
         
