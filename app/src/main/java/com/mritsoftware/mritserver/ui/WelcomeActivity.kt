@@ -99,6 +99,8 @@ class WelcomeActivity : AppCompatActivity() {
         }
         devicesRecyclerView.layoutManager = LinearLayoutManager(this)
         devicesRecyclerView.adapter = deviceAdapter
+        devicesRecyclerView.setHasFixedSize(true)
+        devicesRecyclerView.isNestedScrollingEnabled = false
     }
     
     private fun setupListeners() {
@@ -182,7 +184,7 @@ class WelcomeActivity : AppCompatActivity() {
                                         val deviceId = deviceObj.getString("id")
                                         val deviceMap = mutableMapOf<String, String>()
                                         deviceMap["ip"] = deviceObj.optString("ip", "")
-                                        deviceMap["version"] = deviceObj.optString("protocol_version", "")
+                                        deviceMap["version"] = deviceObj.optString("version", "")
                                         devicesMap[deviceId] = deviceMap
                                     }
                                     
@@ -269,12 +271,20 @@ class WelcomeActivity : AppCompatActivity() {
                         // Atualizar adapter ANTES de mostrar a tela
                         deviceAdapter.updateDevices(devices)
                         
-                        // Forçar atualização do RecyclerView
-                        devicesRecyclerView.visibility = View.VISIBLE
-                        devicesRecyclerView.invalidate()
+                        // Garantir que o adapter está configurado no RecyclerView
+                        if (devicesRecyclerView.adapter == null) {
+                            devicesRecyclerView.adapter = deviceAdapter
+                        }
                         
                         // Mostrar tela
                         showDevicesFound()
+                        
+                        // Forçar atualização do RecyclerView após mostrar a tela
+                        devicesRecyclerView.post {
+                            devicesRecyclerView.visibility = View.VISIBLE
+                            deviceAdapter.notifyDataSetChanged()
+                            devicesRecyclerView.requestLayout()
+                        }
                         
                         // Verificar se o adapter tem itens
                         Log.d("WelcomeActivity", "Adapter itemCount: ${deviceAdapter.itemCount}")
@@ -309,7 +319,7 @@ class WelcomeActivity : AppCompatActivity() {
         if (devicesRecyclerView.adapter == null) {
             devicesRecyclerView.adapter = deviceAdapter
         }
-        deviceAdapter.notifyDataSetChanged()
+        // O notifyDataSetChanged será chamado após mostrar a tela
     }
     
     private fun showDeviceNameInput() {
