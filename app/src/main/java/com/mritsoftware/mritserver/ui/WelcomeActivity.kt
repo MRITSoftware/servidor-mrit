@@ -19,6 +19,7 @@ import com.mritsoftware.mritserver.adapter.WelcomeDeviceAdapter
 import com.mritsoftware.mritserver.service.PythonServerService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,7 +47,7 @@ class WelcomeActivity : AppCompatActivity() {
     
     private lateinit var deviceAdapter: WelcomeDeviceAdapter
     private val devices = mutableListOf<WelcomeDevice>()
-    private val coroutineScope = CoroutineScope(Dispatchers.Main)
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     
     private var isServerStarted = false
     private var selectedDevice: WelcomeDevice? = null

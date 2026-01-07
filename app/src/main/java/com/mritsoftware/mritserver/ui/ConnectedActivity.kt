@@ -18,6 +18,7 @@ import com.mritsoftware.mritserver.adapter.WelcomeDeviceAdapter
 import com.mritsoftware.mritserver.service.PythonServerService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,7 +30,7 @@ class ConnectedActivity : AppCompatActivity() {
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var statusCircle: View
     private lateinit var changeDeviceButton: com.google.android.material.button.MaterialButton
-    private val coroutineScope = CoroutineScope(Dispatchers.Main)
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
