@@ -448,25 +448,30 @@ def update_device_in_db(
 
 # Configurar contas Tuya - buscar do Supabase se disponível
 # (Chamado após definir get_tuya_accounts_from_db)
+# IMPORTANTE: Buscar em thread separada para não bloquear inicialização do servidor
 if not TUYA_ACCOUNTS:
-    try:
-        log("[INFO] Tentando buscar contas Tuya do Supabase...")
-        accounts_from_db = get_tuya_accounts_from_db()
-        
-        if accounts_from_db:
-            # Contas encontradas no Supabase - usar essas
-            try:
-                update_tuya_accounts(accounts_from_db)
-                log(f"[INFO] {len(accounts_from_db)} conta(s) Tuya carregada(s) do Supabase")
-            except Exception as e:
-                log(f"[WARN] Erro ao salvar contas do Supabase no config: {e}")
-        else:
-            # Fallback: nenhuma conta encontrada
-            log("[WARN] Nenhuma conta Tuya habilitada encontrada no Supabase. Configure via endpoint /config/tuya ou adicione contas no Supabase.")
-    except Exception as e:
-        # Não bloquear inicialização se houver erro ao buscar do Supabase
-        # O scan de rede não depende das contas Tuya
-        log(f"[WARN] Erro ao buscar contas Tuya do Supabase (não crítico, scan continuará funcionando): {e}")
+    def load_tuya_accounts_async():
+        try:
+            log("[INFO] Tentando buscar contas Tuya do Supabase...")
+            accounts_from_db = get_tuya_accounts_from_db()
+            
+            if accounts_from_db:
+                # Contas encontradas no Supabase - usar essas
+                try:
+                    update_tuya_accounts(accounts_from_db)
+                    log(f"[INFO] {len(accounts_from_db)} conta(s) Tuya carregada(s) do Supabase")
+                except Exception as e:
+                    log(f"[WARN] Erro ao salvar contas do Supabase no config: {e}")
+            else:
+                # Fallback: nenhuma conta encontrada
+                log("[WARN] Nenhuma conta Tuya habilitada encontrada no Supabase. Configure via endpoint /config/tuya ou adicione contas no Supabase.")
+        except Exception as e:
+            # Não bloquear inicialização se houver erro ao buscar do Supabase
+            # O scan de rede não depende das contas Tuya
+            log(f"[WARN] Erro ao buscar contas Tuya do Supabase (não crítico, scan continuará funcionando): {e}")
+    
+    # Executar em thread separada para não bloquear
+    threading.Thread(target=load_tuya_accounts_async, daemon=True).start()
 
 # =========================
 # DISCOVERY / CACHE DE IP
