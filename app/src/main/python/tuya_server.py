@@ -446,9 +446,29 @@ def update_device_in_db(
         traceback.print_exc()
         return False
 
-# Configurar contas Tuya - NÃO buscar na inicialização para não interferir no scan
-# As contas serão buscadas quando necessário (via endpoint /config/tuya/refresh ou quando buscar local_key)
-# Isso garante que o scan de rede funcione imediatamente sem bloqueios
+# Configurar contas Tuya padrão se não houver configuração
+# As credenciais podem ser configuradas via endpoint /config/tuya ou diretamente no config.json
+DEFAULT_TUYA_ACCOUNTS = [
+    {
+        "access_id": "td7tp3cvq3nrc35emwg3",
+        "access_key": "bbcdaa3dfe9545fca4326fcfa1cf3e2c",
+        "endpoint": "https://openapi.tuyaus.com",
+        "uid": "az1715569264750N2mUr"
+    },
+    {
+        "access_id": "wwxsqj37wnfdnp98wu54",
+        "access_key": "d7a140221f3b4e8f916601af4fbd6816",
+        "endpoint": "https://openapi.tuyaus.com",
+        "uid": "az1759235287550HcJRz"
+    }
+]
+
+if not TUYA_ACCOUNTS:
+    try:
+        update_tuya_accounts(DEFAULT_TUYA_ACCOUNTS)
+        log(f"[INFO] Contas Tuya configuradas automaticamente: {len(DEFAULT_TUYA_ACCOUNTS)} conta(s)")
+    except Exception as e:
+        log(f"[WARN] Não foi possível configurar contas Tuya automaticamente: {e}")
 
 # =========================
 # DISCOVERY / CACHE DE IP
