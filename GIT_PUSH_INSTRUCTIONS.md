@@ -5,7 +5,7 @@
 ### 1. Adicionar o Remote (se ainda não foi adicionado)
 
 ```bash
-git remote add origin https://github.com/MRITSoftware/mrit-server.git
+git remote add origin https://github.com/MRITSoftware/servidor-mrit.git
 ```
 
 ### 2. Verificar o Remote
@@ -40,7 +40,7 @@ git push origin main
 ### 5. Verificar o Workflow no GitHub
 
 Após o push:
-1. Acesse: https://github.com/MRITSoftware/mrit-server
+1. Acesse: https://github.com/MRITSoftware/servidor-mrit
 2. Vá para a aba **Actions**
 3. Aguarde o workflow "Build APK" completar
 4. Baixe o APK gerado na seção **Artifacts**
@@ -84,5 +84,6 @@ git log --oneline
 # Ver diferenças
 git diff
 ```
+
 
 

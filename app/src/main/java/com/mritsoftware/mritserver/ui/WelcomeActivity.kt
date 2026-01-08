@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
-import com.mritsoftware.mritserver.MainActivity
 import com.mritsoftware.mritserver.R
 import com.mritsoftware.mritserver.adapter.WelcomeDevice
 import com.mritsoftware.mritserver.adapter.WelcomeDeviceAdapter
@@ -486,13 +485,6 @@ class WelcomeActivity : AppCompatActivity() {
     private fun isSiteConfigured(): Boolean {
         return sharedPreferences.getBoolean("welcome_completed", false) &&
                sharedPreferences.getString("site_name", null) != null
-    }
-    
-    private fun startMainActivity() {
-        val intent = Intent(this, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
-        finish()
     }
     
     private fun startConnectedActivity() {

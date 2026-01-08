@@ -48,7 +48,7 @@ O projeto está configurado com GitHub Actions para gerar o APK automaticamente.
 1. **O código já foi enviado para o repositório!** ✅
 
 2. **Acesse o GitHub:**
-   - Vá para: https://github.com/MRITSoftware/mritserver
+   - Vá para: https://github.com/MRITSoftware/servidor-mrit
    - Clique na aba **Actions**
    - Aguarde o workflow "Build APK" completar
    - Clique no workflow concluído

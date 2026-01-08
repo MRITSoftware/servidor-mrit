@@ -9,7 +9,6 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
-import com.mritsoftware.mritserver.MainActivity
 import com.mritsoftware.mritserver.R
 import com.mritsoftware.mritserver.ui.ConnectedActivity
 import kotlinx.coroutines.CoroutineScope
@@ -80,11 +79,8 @@ class PythonServerService : Service() {
         val isConfigured = prefs.getBoolean("welcome_completed", false) &&
                           prefs.getString("site_name", null) != null
         
-        val intent = if (isConfigured) {
-            Intent(this, ConnectedActivity::class.java)
-        } else {
-            Intent(this, MainActivity::class.java)
-        }
+        // Sempre usar ConnectedActivity - ela verifica se está configurado e redireciona se necessário
+        val intent = Intent(this, ConnectedActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         
         val pendingIntent = PendingIntent.getActivity(

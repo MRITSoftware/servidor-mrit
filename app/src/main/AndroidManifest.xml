@@ -33,41 +33,28 @@
         </activity>
         
         <activity
-            android:name=".MainActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:configChanges="orientation|screenSize" />
-        
-        <activity
             android:name=".ui.SettingsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName=".ui.ConnectedActivity" />
         
         <activity
             android:name=".ui.DeviceDiscoveryActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName=".ui.ConnectedActivity" />
         
         <activity
             android:name=".ui.DeviceDetailsActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize"
-            android:parentActivityName=".MainActivity" />
+            android:parentActivityName=".ui.ConnectedActivity" />
         
         <activity
             android:name=".ui.LoadingSyncActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:configChanges="orientation|screenSize"
-            android:theme="@style/Theme.MRITServer" />
-        
-        <activity
-            android:name=".ui.SuccessActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize"

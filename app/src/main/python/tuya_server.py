@@ -4,7 +4,9 @@ import os
 import json
 import traceback
 import threading
+import time
 from typing import Optional, Dict, Any, List
+from datetime import datetime, timedelta
 
 from flask import Flask, request, jsonify
 import tinytuya
@@ -53,7 +55,11 @@ def create_config_if_needed():
                 "url": "",
                 "anon_key": ""
             },
-            "tuya_accounts": []
+            "tuya_accounts": [],
+            "tuya_accounts_cache": {
+                "last_update": None,
+                "accounts": []
+            }
         }
         
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
@@ -101,8 +107,11 @@ def update_supabase_config(url: str, anon_key: str):
     SUPABASE_CONFIG = cfg["supabase"]
     log(f"[OK] Configuração do Supabase atualizada")
 
-def update_tuya_accounts(accounts: List[Dict[str, str]]):
-    """Atualiza as contas Tuya no config.json"""
+def update_tuya_accounts(accounts: List[Dict[str, str]], update_timestamp: bool = True):
+    """
+    Atualiza as contas Tuya no config.json e no cache.
+    Se update_timestamp=True, atualiza o timestamp de última atualização.
+    """
     # Carregar config existente
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -112,6 +121,14 @@ def update_tuya_accounts(accounts: List[Dict[str, str]]):
     
     cfg["tuya_accounts"] = accounts
     
+    # Atualizar cache com timestamp
+    if "tuya_accounts_cache" not in cfg:
+        cfg["tuya_accounts_cache"] = {}
+    
+    cfg["tuya_accounts_cache"]["accounts"] = accounts
+    if update_timestamp:
+        cfg["tuya_accounts_cache"]["last_update"] = datetime.now().isoformat()
+    
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=4, ensure_ascii=False)
     
@@ -119,6 +136,99 @@ def update_tuya_accounts(accounts: List[Dict[str, str]]):
     global TUYA_ACCOUNTS
     TUYA_ACCOUNTS = accounts
     log(f"[OK] Configuração de contas Tuya atualizada: {len(accounts)} conta(s)")
+
+def get_tuya_accounts_cache_age() -> Optional[float]:
+    """
+    Retorna a idade do cache em segundos, ou None se não houver cache.
+    """
+    if not os.path.exists(CONFIG_PATH):
+        return None
+    
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        
+        cache = cfg.get("tuya_accounts_cache", {})
+        last_update_str = cache.get("last_update")
+        
+        if not last_update_str:
+            return None
+        
+        last_update = datetime.fromisoformat(last_update_str)
+        age = (datetime.now() - last_update).total_seconds()
+        return age
+        
+    except Exception as e:
+        log(f"[CACHE] Erro ao verificar idade do cache: {e}")
+        return None
+
+def is_tuya_accounts_cache_valid(max_age_seconds: int = 3600) -> bool:
+    """
+    Verifica se o cache de contas Tuya ainda é válido.
+    max_age_seconds: tempo máximo de validade do cache (padrão: 1 hora)
+    Retorna True se o cache é válido, False caso contrário.
+    """
+    age = get_tuya_accounts_cache_age()
+    
+    if age is None:
+        return False  # Não há cache
+    
+    if age > max_age_seconds:
+        log(f"[CACHE] Cache expirado (idade: {age:.0f}s, máximo: {max_age_seconds}s)")
+        return False
+    
+    # Verificar se há contas no cache
+    if not os.path.exists(CONFIG_PATH):
+        return False
+    
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        
+        cache = cfg.get("tuya_accounts_cache", {})
+        accounts = cache.get("accounts", [])
+        
+        if not accounts:
+            log("[CACHE] Cache vazio")
+            return False
+        
+        log(f"[CACHE] Cache válido (idade: {age:.0f}s, {len(accounts)} conta(s))")
+        return True
+        
+    except Exception as e:
+        log(f"[CACHE] Erro ao verificar cache: {e}")
+        return False
+
+def load_tuya_accounts_from_cache() -> List[Dict[str, str]]:
+    """
+    Carrega contas Tuya do cache local (config.json).
+    Retorna lista vazia se não houver cache válido.
+    """
+    if not os.path.exists(CONFIG_PATH):
+        return []
+    
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        
+        cache = cfg.get("tuya_accounts_cache", {})
+        accounts = cache.get("accounts", [])
+        
+        if accounts:
+            log(f"[CACHE] Carregadas {len(accounts)} conta(s) do cache local")
+            return accounts
+        
+        # Fallback: tentar tuya_accounts antigo (compatibilidade)
+        accounts = cfg.get("tuya_accounts", [])
+        if accounts:
+            log(f"[CACHE] Carregadas {len(accounts)} conta(s) do config antigo (compatibilidade)")
+            return accounts
+        
+        return []
+        
+    except Exception as e:
+        log(f"[CACHE] Erro ao carregar cache: {e}")
+        return []
 
 # cria se não existir
 create_config_if_needed()
@@ -160,29 +270,8 @@ if not SUPABASE_CONFIG.get("url") or not SUPABASE_CONFIG.get("anon_key"):
     except Exception as e:
         log(f"[WARN] Não foi possível configurar Supabase automaticamente: {e}")
 
-# Configurar contas Tuya padrão se não houver configuração
-# As credenciais podem ser configuradas via endpoint /config/tuya ou diretamente no config.json
-DEFAULT_TUYA_ACCOUNTS = [
-    {
-        "access_id": "td7tp3cvq3nrc35emwg3",
-        "access_key": "bbcdaa3dfe9545fca4326fcfa1cf3e2c",
-        "endpoint": "https://openapi.tuyaus.com",
-        "uid": "az1715569264750N2mUr"
-    },
-    {
-        "access_id": "wwxsqj37wnfdnp98wu54",
-        "access_key": "d7a140221f3b4e8f916601af4fbd6816",
-        "endpoint": "https://openapi.tuyaus.com",
-        "uid": "az1759235287550HcJRz"
-    }
-]
-
-if not TUYA_ACCOUNTS:
-    try:
-        update_tuya_accounts(DEFAULT_TUYA_ACCOUNTS)
-        log(f"[INFO] Contas Tuya configuradas automaticamente: {len(DEFAULT_TUYA_ACCOUNTS)} conta(s)")
-    except Exception as e:
-        log(f"[WARN] Não foi possível configurar contas Tuya automaticamente: {e}")
+# Configurar contas Tuya será feito após definir as funções do banco
+# (ver mais abaixo, após a seção DATABASE)
 
 print(f"[INFO] Servidor local iniciado para SITE = {SITE_NAME}")
 
@@ -338,6 +427,52 @@ def create_device_in_db(
         traceback.print_exc()
         return False
 
+def get_tuya_accounts_from_db() -> List[Dict[str, str]]:
+    """
+    Busca contas Tuya da tabela contas_tuya no Supabase.
+    Retorna apenas contas com enabled = true.
+    Retorna lista vazia se houver erro ou se não houver contas habilitadas.
+    """
+    if not REQUESTS_AVAILABLE or not SUPABASE_CONFIG.get("url"):
+        log("[DB] requests não disponível ou Supabase não configurado")
+        return []
+    
+    try:
+        base_url = get_supabase_url()
+        headers = get_supabase_headers()
+        
+        # Buscar apenas contas habilitadas
+        url = f"{base_url}/contas_tuya?enabled=eq.true&select=access_id,access_key,endpoint,uid,label"
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        accounts = []
+        
+        for row in data:
+            account = {
+                "access_id": row.get("access_id", ""),
+                "access_key": row.get("access_key", ""),
+                "endpoint": row.get("endpoint", ""),
+                "uid": row.get("uid", ""),
+                "label": row.get("label", "")  # Opcional: label para identificação
+            }
+            
+            # Validar que todos os campos obrigatórios estão presentes
+            if all([account["access_id"], account["access_key"], account["endpoint"], account["uid"]]):
+                accounts.append(account)
+            else:
+                log(f"[DB] Conta Tuya incompleta ignorada: {account.get('label', 'sem label')}")
+        
+        log(f"[DB] Encontradas {len(accounts)} conta(s) Tuya habilitada(s) no Supabase")
+        return accounts
+        
+    except Exception as e:
+        log(f"[DB] Erro ao buscar contas Tuya do Supabase: {e}")
+        traceback.print_exc()
+        return []
+
 def update_device_in_db(
     tuya_device_id: str,
     site_id: Optional[str] = None,
@@ -418,6 +553,46 @@ def update_device_in_db(
         log(f"[DB] Erro ao atualizar device {tuya_device_id}: {e}")
         traceback.print_exc()
         return False
+
+# Configurar contas Tuya - usar cache inteligente
+# (Chamado após definir get_tuya_accounts_from_db e funções de cache)
+# Estratégia:
+# 1. Tentar carregar do cache local (config.json)
+# 2. Se cache válido (< 1 hora), usar cache (SEM requisição ao Supabase)
+# 3. Se cache inválido ou não existe, buscar do Supabase
+# 4. Salvar no cache para próximas vezes
+
+CACHE_MAX_AGE_SECONDS = 3600  # 1 hora
+
+if not TUYA_ACCOUNTS:
+    # Tentar carregar do cache primeiro
+    cached_accounts = load_tuya_accounts_from_cache()
+    
+    if cached_accounts and is_tuya_accounts_cache_valid(CACHE_MAX_AGE_SECONDS):
+        # Cache válido - usar sem fazer requisição ao Supabase
+        TUYA_ACCOUNTS = cached_accounts
+        log(f"[INFO] {len(cached_accounts)} conta(s) Tuya carregada(s) do cache (sem requisição ao Supabase)")
+    else:
+        # Cache inválido ou não existe - buscar do Supabase
+        log("[INFO] Cache inválido ou não existe. Buscando contas Tuya do Supabase...")
+        accounts_from_db = get_tuya_accounts_from_db()
+        
+        if accounts_from_db:
+            # Contas encontradas no Supabase - salvar no cache
+            try:
+                update_tuya_accounts(accounts_from_db, update_timestamp=True)
+                TUYA_ACCOUNTS = accounts_from_db
+                log(f"[INFO] {len(accounts_from_db)} conta(s) Tuya carregada(s) do Supabase e salvas no cache")
+            except Exception as e:
+                log(f"[WARN] Erro ao salvar contas do Supabase no cache: {e}")
+        else:
+            # Nenhuma conta encontrada no Supabase
+            # Tentar usar cache mesmo que expirado (melhor que nada)
+            if cached_accounts:
+                TUYA_ACCOUNTS = cached_accounts
+                log(f"[WARN] Nenhuma conta no Supabase. Usando cache expirado: {len(cached_accounts)} conta(s)")
+            else:
+                log("[WARN] Nenhuma conta Tuya encontrada. Configure via endpoint /config/tuya ou adicione contas no Supabase.")
 
 # =========================
 # DISCOVERY / CACHE DE IP
@@ -634,7 +809,9 @@ def health():
 def api_config_tuya():
     """
     Configura as contas Tuya para buscar local_key.
-    Body:
+    Pode receber contas diretamente ou buscar do Supabase.
+    
+    Body opção 1 (contas diretas):
     {
         "accounts": [
             {
@@ -646,9 +823,36 @@ def api_config_tuya():
             ...
         ]
     }
+    
+    Body opção 2 (buscar do Supabase):
+    {
+        "from_supabase": true
+    }
     """
     try:
         data = request.get_json(silent=True) or {}
+        
+        # Se from_supabase = true, buscar do banco
+        if data.get("from_supabase"):
+            log("[API] Buscando contas Tuya do Supabase...")
+            accounts = get_tuya_accounts_from_db()
+            
+            if not accounts:
+                return jsonify({
+                    "ok": False,
+                    "error": "Nenhuma conta Tuya habilitada encontrada no Supabase"
+                }), 404
+            
+            # Atualizar com as contas do banco
+            update_tuya_accounts(accounts)
+            
+            return jsonify({
+                "ok": True,
+                "message": f"{len(accounts)} conta(s) Tuya carregada(s) do Supabase",
+                "accounts_count": len(accounts)
+            }), 200
+        
+        # Caso contrário, usar contas fornecidas no body
         accounts = data.get("accounts", [])
         
         if not accounts:
@@ -672,6 +876,61 @@ def api_config_tuya():
         err = str(e)
         log(f"[ERRO] API /config/tuya: {err}")
         traceback.print_exc()
+        return jsonify({"ok": False, "error": err}), 500
+
+@app.route("/config/tuya/refresh", methods=["POST"])
+def api_refresh_tuya_accounts():
+    """
+    Recarrega as contas Tuya do Supabase (força atualização, ignora cache).
+    Útil para atualizar contas após mudanças no banco.
+    """
+    try:
+        log("[API] Forçando recarga de contas Tuya do Supabase (ignorando cache)...")
+        accounts = get_tuya_accounts_from_db()
+        
+        if not accounts:
+            return jsonify({
+                "ok": False,
+                "error": "Nenhuma conta Tuya habilitada encontrada no Supabase"
+            }), 404
+        
+        update_tuya_accounts(accounts, update_timestamp=True)
+        
+        return jsonify({
+            "ok": True,
+            "message": f"{len(accounts)} conta(s) Tuya recarregada(s) do Supabase",
+            "accounts_count": len(accounts),
+            "cache_updated": True
+        }), 200
+        
+    except Exception as e:
+        err = str(e)
+        log(f"[ERRO] API /config/tuya/refresh: {err}")
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": err}), 500
+
+@app.route("/config/tuya/cache/status", methods=["GET"])
+def api_tuya_cache_status():
+    """
+    Retorna o status do cache de contas Tuya.
+    """
+    try:
+        age = get_tuya_accounts_cache_age()
+        is_valid = is_tuya_accounts_cache_valid(CACHE_MAX_AGE_SECONDS)
+        cached_accounts = load_tuya_accounts_from_cache()
+        
+        return jsonify({
+            "ok": True,
+            "cache_valid": is_valid,
+            "cache_age_seconds": age,
+            "cache_max_age_seconds": CACHE_MAX_AGE_SECONDS,
+            "cached_accounts_count": len(cached_accounts),
+            "current_accounts_count": len(TUYA_ACCOUNTS)
+        }), 200
+        
+    except Exception as e:
+        err = str(e)
+        log(f"[ERRO] API /config/tuya/cache/status: {err}")
         return jsonify({"ok": False, "error": err}), 500
 
 @app.route("/config/supabase", methods=["POST"])
@@ -775,9 +1034,28 @@ def fetch_local_key_from_tuya_api(tuya_device_id: str) -> Optional[str]:
         log("[TUYA_API] tuya-connector-python não está disponível")
         return None
     
+    # Se não houver contas, tentar carregar do cache ou buscar do Supabase
     if not TUYA_ACCOUNTS:
-        log("[TUYA_API] Nenhuma conta Tuya configurada")
-        return None
+        log("[TUYA_API] Nenhuma conta Tuya configurada. Tentando carregar do cache...")
+        
+        # Tentar cache primeiro (evita requisição ao Supabase)
+        cached_accounts = load_tuya_accounts_from_cache()
+        if cached_accounts and is_tuya_accounts_cache_valid(CACHE_MAX_AGE_SECONDS):
+            global TUYA_ACCOUNTS
+            TUYA_ACCOUNTS = cached_accounts
+            log(f"[TUYA_API] {len(cached_accounts)} conta(s) carregada(s) do cache (sem requisição ao Supabase)")
+        else:
+            # Cache inválido ou não existe - buscar do Supabase
+            log("[TUYA_API] Cache inválido. Buscando do Supabase...")
+            accounts_from_db = get_tuya_accounts_from_db()
+            if accounts_from_db:
+                update_tuya_accounts(accounts_from_db, update_timestamp=True)
+                global TUYA_ACCOUNTS
+                TUYA_ACCOUNTS = accounts_from_db
+                log(f"[TUYA_API] {len(accounts_from_db)} conta(s) Tuya carregada(s) do Supabase")
+            else:
+                log("[TUYA_API] Nenhuma conta Tuya habilitada encontrada no Supabase")
+                return None
     
     for account in TUYA_ACCOUNTS:
         try:
@@ -885,6 +1163,26 @@ def api_sync_devices():
             local_key_from_body = device_extra_data.get("local_key")
             
             # Se não temos local_key do body, tentar buscar da API Tuya
+            # Primeiro, garantir que temos contas Tuya (usar cache se disponível)
+            if not TUYA_ACCOUNTS:
+                log("[SYNC] Nenhuma conta Tuya configurada. Tentando carregar do cache...")
+                
+                # Tentar cache primeiro (evita requisição ao Supabase)
+                cached_accounts = load_tuya_accounts_from_cache()
+                if cached_accounts and is_tuya_accounts_cache_valid(CACHE_MAX_AGE_SECONDS):
+                    global TUYA_ACCOUNTS
+                    TUYA_ACCOUNTS = cached_accounts
+                    log(f"[SYNC] {len(cached_accounts)} conta(s) carregada(s) do cache (sem requisição ao Supabase)")
+                else:
+                    # Cache inválido - buscar do Supabase
+                    log("[SYNC] Cache inválido. Buscando do Supabase...")
+                    accounts_from_db = get_tuya_accounts_from_db()
+                    if accounts_from_db:
+                        update_tuya_accounts(accounts_from_db, update_timestamp=True)
+                        global TUYA_ACCOUNTS
+                        TUYA_ACCOUNTS = accounts_from_db
+                        log(f"[SYNC] {len(accounts_from_db)} conta(s) Tuya carregada(s) do Supabase")
+            
             if not local_key_from_body:
                 log(f"[SYNC] Tentando buscar local_key da API Tuya para {tuya_id}...")
                 local_key_from_api = fetch_local_key_from_tuya_api(tuya_id)

@@ -100,3 +100,4 @@ As credenciais são salvas em `config.json` e podem ser atualizadas via API.
 - Logs mais informativos para debugging
 
 
+

@@ -6,7 +6,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.PowerManager
 import android.util.Log
-import com.mritsoftware.mritserver.MainActivity
+import com.mritsoftware.mritserver.ui.ConnectedActivity
 import com.mritsoftware.mritserver.service.PythonServerService
 
 class BootReceiver : BroadcastReceiver() {
@@ -58,13 +58,13 @@ class BootReceiver : BroadcastReceiver() {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 try {
                     // Abrir mritserver
-                    val mritserverIntent = Intent(context, MainActivity::class.java).apply {
+                    val mritserverIntent = Intent(context, ConnectedActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                         setPackage(context.packageName)
                     }
                     context.startActivity(mritserverIntent)
-                    Log.d(TAG, "MainActivity (mritserver) aberta com sucesso")
+                    Log.d(TAG, "ConnectedActivity (mritserver) aberta com sucesso")
                     
                     // Aguardar mais 2 segundos antes de abrir gelafitgo
                     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({

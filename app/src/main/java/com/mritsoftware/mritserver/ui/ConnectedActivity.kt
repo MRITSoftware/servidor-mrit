@@ -11,7 +11,6 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.mritsoftware.mritserver.MainActivity
 import com.mritsoftware.mritserver.R
 import com.mritsoftware.mritserver.adapter.WelcomeDevice
 import com.mritsoftware.mritserver.adapter.WelcomeDeviceAdapter
